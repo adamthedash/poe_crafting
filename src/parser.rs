@@ -12,14 +12,14 @@ type ModId = u32;
 type ModGroupId = u32;
 type TagId = u32;
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct ListLUT<T> {
     pub seq: Vec<T>,
     pub ind: HashMap<u32, usize>,
 }
 
 #[serde_as]
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct Tier {
     #[serde_as(as = "DisplayFromStr")]
     pub ilvl: u32,
@@ -28,7 +28,7 @@ pub struct Tier {
     pub nvalues: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Affix {
     Prefix,
@@ -37,7 +37,7 @@ pub enum Affix {
 }
 
 #[serde_as]
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct Modifier {
     #[serde_as(as = "DisplayFromStr")]
     pub id_modifier: ModId,
@@ -50,7 +50,7 @@ pub struct Modifier {
 }
 
 #[serde_as]
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct Tag {
     #[serde_as(as = "DisplayFromStr")]
     id_mtype: TagId,
@@ -58,7 +58,7 @@ pub struct Tag {
 }
 
 #[serde_as]
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct Root {
     /// Tiers of a given mod type on a given base item
     pub tiers: HashMap<ModId, HashMap<BaseItemId, Vec<Tier>>>,
