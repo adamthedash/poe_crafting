@@ -12,38 +12,38 @@ use crate::{
 };
 
 pub trait Currency {
-    fn name() -> &'static str;
+    fn name(&self) -> &'static str;
 
     /// Whether this currency can currently be used on the given item
-    fn can_be_used(item: &ItemState) -> bool;
+    fn can_be_used(&self, item: &ItemState) -> bool;
 
     /// Gets the pool of mods that can roll if this currency is used.
     /// Assumes that it has been varified with Self::can_be_used
     /// candidate_tiers: The pool of mods that can possibly roll on this item
-    fn possible_tiers(item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId>;
+    fn possible_tiers(&self, item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId>;
 
     /// Use this currency on the item.
     /// Assumes that it has been varified with Self::can_be_used
-    fn craft(item: &mut ItemState, candidate_tiers: &[TierId]);
+    fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId]);
 }
 
 pub struct Transmute;
 
 impl Currency for Transmute {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
         "Transmute"
     }
 
-    fn can_be_used(item: &ItemState) -> bool {
+    fn can_be_used(&self, item: &ItemState) -> bool {
         item.rarity == Rarity::Normal
     }
 
-    fn possible_tiers(item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId> {
-        Augmentation::possible_tiers(item, candidate_tiers)
+    fn possible_tiers(&self, item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId> {
+        Augmentation.possible_tiers(item, candidate_tiers)
     }
 
-    fn craft(item: &mut ItemState, candidate_tiers: &[TierId]) {
-        Augmentation::craft(item, candidate_tiers);
+    fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId]) {
+        Augmentation.craft(item, candidate_tiers);
         item.rarity = Rarity::Magic;
     }
 }
@@ -51,15 +51,15 @@ impl Currency for Transmute {
 pub struct Augmentation;
 
 impl Currency for Augmentation {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
         "Augmentation"
     }
 
-    fn can_be_used(item: &ItemState) -> bool {
+    fn can_be_used(&self, item: &ItemState) -> bool {
         item.rarity == Rarity::Magic && item.mods.len() < 2
     }
 
-    fn possible_tiers(item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId> {
+    fn possible_tiers(&self, item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId> {
         // TODO: Filter out non-standard mods, such as essences or abyss
         let mods = MODS.get().unwrap();
         let tiers = TIERS.get().unwrap();
@@ -80,10 +80,10 @@ impl Currency for Augmentation {
             .collect()
     }
 
-    fn craft(item: &mut ItemState, candidate_tiers: &[TierId]) {
+    fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId]) {
         let tiers = TIERS.get().unwrap();
 
-        let candidate_tiers = Self::possible_tiers(item, candidate_tiers);
+        let candidate_tiers = self.possible_tiers(item, candidate_tiers);
 
         let weights = candidate_tiers
             .iter()
@@ -99,36 +99,36 @@ impl Currency for Augmentation {
 pub struct Regal;
 
 impl Currency for Regal {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
         "Regal"
     }
 
-    fn can_be_used(item: &ItemState) -> bool {
+    fn can_be_used(&self, item: &ItemState) -> bool {
         item.rarity == Rarity::Magic
     }
 
-    fn possible_tiers(item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId> {
-        Exalt::possible_tiers(item, candidate_tiers)
+    fn possible_tiers(&self, item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId> {
+        Exalt.possible_tiers(item, candidate_tiers)
     }
 
-    fn craft(item: &mut ItemState, candidate_tiers: &[TierId]) {
+    fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId]) {
         item.rarity = Rarity::Rare;
-        Exalt::craft(item, candidate_tiers);
+        Exalt.craft(item, candidate_tiers);
     }
 }
 
 pub struct Exalt;
 
 impl Currency for Exalt {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
         "Exalt"
     }
 
-    fn can_be_used(item: &ItemState) -> bool {
+    fn can_be_used(&self, item: &ItemState) -> bool {
         item.rarity == Rarity::Rare && item.mods.len() < 6
     }
 
-    fn possible_tiers(item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId> {
+    fn possible_tiers(&self, item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId> {
         let mods = MODS.get().unwrap();
         let tiers = TIERS.get().unwrap();
 
@@ -159,10 +159,10 @@ impl Currency for Exalt {
             .collect()
     }
 
-    fn craft(item: &mut ItemState, candidate_tiers: &[TierId]) {
+    fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId]) {
         let tiers = TIERS.get().unwrap();
 
-        let candidate_tiers = Self::possible_tiers(item, candidate_tiers);
+        let candidate_tiers = self.possible_tiers(item, candidate_tiers);
 
         let weights = candidate_tiers
             .iter()
@@ -178,20 +178,20 @@ impl Currency for Exalt {
 pub struct Annulment;
 
 impl Currency for Annulment {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
         "Annulment"
     }
 
-    fn can_be_used(item: &ItemState) -> bool {
+    fn can_be_used(&self, item: &ItemState) -> bool {
         !item.mods.is_empty()
     }
 
-    fn possible_tiers<'a>(_item: &ItemState, _candidate_tiers: &[TierId]) -> Vec<TierId> {
+    fn possible_tiers(&self, _item: &ItemState, _candidate_tiers: &[TierId]) -> Vec<TierId> {
         // TODO: Should this return the possible targets to remove?
         vec![]
     }
 
-    fn craft(item: &mut ItemState, _candidate_tiers: &[TierId]) {
+    fn craft(&self, item: &mut ItemState, _candidate_tiers: &[TierId]) {
         let to_remove = random_range(0..item.mods.len());
         item.mods.remove(to_remove);
     }
@@ -200,22 +200,22 @@ impl Currency for Annulment {
 pub struct Alchemy;
 
 impl Currency for Alchemy {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
         "Alchemy"
     }
 
-    fn can_be_used(item: &ItemState) -> bool {
+    fn can_be_used(&self, item: &ItemState) -> bool {
         item.rarity == Rarity::Normal
     }
 
-    fn possible_tiers(item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId> {
-        Exalt::possible_tiers(item, candidate_tiers)
+    fn possible_tiers(&self, item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId> {
+        Exalt.possible_tiers(item, candidate_tiers)
     }
 
-    fn craft(item: &mut ItemState, candidate_tiers: &[TierId]) {
+    fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId]) {
         item.rarity = Rarity::Rare;
         for _ in 0..4 {
-            Exalt::craft(item, candidate_tiers);
+            Exalt.craft(item, candidate_tiers);
         }
     }
 }
@@ -223,24 +223,24 @@ impl Currency for Alchemy {
 pub struct Chaos;
 
 impl Currency for Chaos {
-    fn name() -> &'static str {
+    fn name(&self) -> &'static str {
         "Chaos"
     }
 
-    fn can_be_used(item: &ItemState) -> bool {
+    fn can_be_used(&self, item: &ItemState) -> bool {
         item.rarity == Rarity::Rare && !item.mods.is_empty()
     }
 
-    fn possible_tiers(_item: &ItemState, _candidate_tiers: &[TierId]) -> Vec<TierId> {
+    fn possible_tiers(&self, _item: &ItemState, _candidate_tiers: &[TierId]) -> Vec<TierId> {
         // TODO: Need to account for the mod being removed
         vec![]
     }
 
-    fn craft(item: &mut ItemState, candidate_tiers: &[TierId]) {
+    fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId]) {
         // TODO: Need to understand if this logic is correct.
         //  It could be roll outcome first then roll remove
-        Annulment::craft(item, candidate_tiers);
-        Exalt::craft(item, candidate_tiers);
+        Annulment.craft(item, candidate_tiers);
+        Exalt.craft(item, candidate_tiers);
     }
 }
 
