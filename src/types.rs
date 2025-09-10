@@ -28,13 +28,15 @@ pub enum ModType {
 pub type ModGroup = String;
 pub type ModFamily = String;
 
+pub type ModTag = String;
+
 /// Represents a family of modifiers
 #[derive(Debug)]
 pub struct Modifier {
     /// Eg. BaseLocalDefencesAndLife
     pub group: ModGroup,
     /// Eg. Fire, Attack
-    pub tags: HashSet<String>,
+    pub tags: HashSet<ModTag>,
     pub affix: Affix,
     pub mod_type: ModType,
     /// The individual stats provided by this mod Eg. 2 for hybrid attack/accuracy
@@ -53,7 +55,7 @@ pub struct Tier {
     /// Eg. of the Hare
     pub name: String,
     /// Link to parent modifier
-    pub modifier: ModGroup,
+    pub mod_id: ModGroup,
     /// Minimum required ilvl
     pub ilvl: u32,
     /// One range for each stat provided by this mod

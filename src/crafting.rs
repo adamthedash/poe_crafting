@@ -1,6 +1,12 @@
+use std::collections::HashSet;
+
+use itertools::Itertools;
 use random_choice::random_choice;
 
-use crate::{TIERS, types::TierId};
+use crate::{
+    MODS, TIERS,
+    types::{Affix, ModTag, TierId},
+};
 
 /// Randomly roll a mod from the given pool
 pub fn roll_mod(candidate_tiers: &[TierId]) -> TierId {
@@ -18,4 +24,97 @@ pub fn roll_mod(candidate_tiers: &[TierId]) -> TierId {
     let choice = choices.first().unwrap();
 
     (**choice).clone()
+}
+
+/// Filter mods which can roll using a "Perfect" currency
+pub fn filter_perfect(candidate_tiers: &[TierId]) -> Vec<TierId> {
+    filter_better_currency(candidate_tiers, 50)
+}
+/// Filter mods which can roll using a "Greater" currency
+pub fn filter_greater(candidate_tiers: &[TierId]) -> Vec<TierId> {
+    filter_better_currency(candidate_tiers, 35)
+}
+
+/// Minimum Modifier Level: Added random modifiers are at least this level or higher,
+/// except if a specific modifier type would be excluded entirely from being able to roll.
+/// In other words, at least one tier of each mod will always be eligible to roll, respecting item level.
+/// For example, if all tiers of a type of a modifier would be excluded, and the highest modifier tier
+/// is below Level 35 (e.g. Light Radius), the highest tier of Light Radius (requiring Level 30) would still be able to roll.
+fn filter_better_currency(candidate_tiers: &[TierId], min_ilvl: u32) -> Vec<TierId> {
+    let tiers = TIERS.get().unwrap();
+
+    let mut candidate_tiers = candidate_tiers
+        .iter()
+        .map(|tier_id| &tiers[tier_id])
+        .collect::<Vec<_>>();
+
+    // Group by mod group
+    candidate_tiers.sort_by_key(|t| &t.mod_id);
+    let tier_groups = candidate_tiers.into_iter().chunk_by(|t| &t.mod_id);
+
+    tier_groups
+        .into_iter()
+        .flat_map(|(_, group)| {
+            let group_tiers = group.collect::<Vec<_>>();
+            // Filter tiers by ilvl
+            let mut filtered = group_tiers
+                .iter()
+                .filter(|t| t.ilvl >= min_ilvl)
+                .collect::<Vec<_>>();
+
+            // If there's none left, take the highest instead
+            if filtered.is_empty() {
+                filtered = group_tiers
+                    .iter()
+                    .max_by_key(|t| t.ilvl)
+                    .into_iter()
+                    .collect::<Vec<_>>();
+            }
+
+            filtered.iter().map(|t| t.id.clone()).collect::<Vec<_>>()
+        })
+        .collect::<Vec<_>>()
+}
+
+/// For Sinistral/Dextral Omens
+fn filter_affix(candidate_mods: &[TierId], affix: Affix) -> Vec<TierId> {
+    let tiers = TIERS.get().unwrap();
+    let mods = MODS.get().unwrap();
+
+    candidate_mods
+        .iter()
+        .filter(|tier_id| {
+            let tier = &tiers[*tier_id];
+            let modifier = &mods[&tier.mod_id];
+
+            modifier.affix == affix
+        })
+        .cloned()
+        .collect()
+}
+
+/// For Homogenising Omen
+fn filter_tags(candidate_mods: &[TierId], tags: HashSet<ModTag>) -> Vec<TierId> {
+    let tiers = TIERS.get().unwrap();
+    let mods = MODS.get().unwrap();
+
+    candidate_mods
+        .iter()
+        .filter(|tier_id| {
+            let tier = &tiers[*tier_id];
+            let modifier = &mods[&tier.mod_id];
+
+            modifier.tags.iter().any(|tag| tags.contains(tag))
+        })
+        .cloned()
+        .collect()
+}
+
+/// For Whittling Omen
+fn filter_lowest_tier(candidate_mods: &[TierId]) -> Vec<TierId> {
+    let tiers = TIERS.get().unwrap();
+    let mods = MODS.get().unwrap();
+
+    // TODO: Need base-specific tiers
+    todo!()
 }

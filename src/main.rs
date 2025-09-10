@@ -8,17 +8,26 @@ use itertools::Itertools;
 use poe_crafting::{
     FORMATTERS, ITEM_TIERS, MODS, TIERS,
     crafting::roll_mod,
-    currency::{Augmentation, Currency, Exalt, Regal, Transmute},
+    currency::{Augmentation, CURRENCIES, Currency, Exalt, Regal, Transmute},
     item_state::{ItemState, Rarity, get_valid_mods_for_item},
     parser_dat::{load_mod_families, load_mod_groups, load_mod_tiers, load_stat_ids},
     parser_poe2db, parser_stat_desc,
     types::StatFormatters,
 };
+use random_choice::random_choice;
 
 fn init() {
-    let poe2db_root = parser_poe2db::load(Path::new(
-        "/home/adam/repos/data/poe/coe/poe2db_data_altered_weights.json",
-    ));
+    // PATHS
+    // data_root/
+    //      tables/  - Extracted with poe_data_tools
+    //      coe/     - From Prohibited Library discord
+    //      stat_descriptions.json      - https://repoe-fork.github.io/poe2/stat_translations/stat_descriptions.json
+    // let data_root = Path::new("/home/adam/repos/data/poe"); // laptop
+    let data_root = Path::new("/mnt/nvme_4tb/programming/data/poe2"); // desktop
+    let poe2_dat_root = data_root.join("tables");
+
+    // Load weight data
+    let poe2db_root = parser_poe2db::load(&data_root.join("coe/poe2db_data_altered_weights.json"));
 
     // Create TierId -> weight LUT
     // Create BaseItemId -> [TierId] LUT
@@ -41,21 +50,17 @@ fn init() {
     ITEM_TIERS.set(base_tiers).unwrap();
 
     // Load mod groups from dat files
-    let mod_groups = load_mod_groups(Path::new(
-        "/home/adam/repos/data/poe/tables/data/modtype.csv",
-    ));
+    let mod_groups = load_mod_groups(&poe2_dat_root.join("data/modtype.csv"));
 
-    let mod_families = load_mod_families(Path::new(
-        "/home/adam/repos/data/poe/tables/data/modfamily.csv",
-    ));
+    let mod_families = load_mod_families(&poe2_dat_root.join("data/modfamily.csv"));
 
     // Load stat IDs from dat files
-    let stat_ids = load_stat_ids(Path::new("/home/adam/repos/data/poe/tables/data/stats.csv"));
+    let stat_ids = load_stat_ids(&poe2_dat_root.join("data/stats.csv"));
 
     // Load ModGroup -> [Tier] LUT from dat files
     // Load ModGroup -> [Stat] LUT
     let (mut tiers, mod_stats) = load_mod_tiers(
-        Path::new("/home/adam/repos/data/poe/tables/data/mods.csv"),
+        &poe2_dat_root.join("data/mods.csv"),
         &stat_ids,
         &mod_groups,
         &mod_families,
@@ -69,9 +74,7 @@ fn init() {
     TIERS.set(tiers).unwrap();
 
     // Load stat descriptions
-    let stat_desc_root = parser_stat_desc::load(Path::new(
-        "/home/adam/repos/data/poe/stat_descriptions.json",
-    ));
+    let stat_desc_root = parser_stat_desc::load(&data_root.join("stat_descriptions.json"));
 
     // Create StatID -> [Formatter] LUT
     let mut stat_formatters = StatFormatters::new();
@@ -96,50 +99,67 @@ fn main() {
     let item_tiers = ITEM_TIERS.get().unwrap();
     let formatters = FORMATTERS.get().unwrap();
 
-    // for (item_id, tier_ids) in item_tiers {
-    //     println!("{:?}", item_id);
-    //     for tier_id in tier_ids {
-    //         let tier = &tiers[tier_id];
-    //         let modifier = &mods[&tier.modifier];
+    let bases = item_tiers.keys().collect::<Vec<_>>();
+    let weights = vec![1.; bases.len()];
+
+    // for _ in 0..10 {
+    //     let base_type = random_choice().random_choice_f32(&bases, &weights, 1)[0];
+    //     let mut item = ItemState {
+    //         base_type: (*base_type).clone(),
+    //         item_level: 75,
+    //         rarity: Rarity::Normal,
+    //         mods: vec![],
+    //     };
+    //     let candidate_tiers = get_valid_mods_for_item(&item);
     //
-    //         let trade_string = modifier
-    //             .stats
+    //     for _ in 0..10 {
+    //         let currencies = CURRENCIES
     //             .iter()
-    //             .map(|stat_id| formatters[stat_id].first().unwrap().trade_string())
-    //             .join(", ");
+    //             .filter(|c| c.can_be_used(&item))
+    //             .collect::<Vec<_>>();
+    //         let weights = vec![1.; currencies.len()];
+    //         let currency = random_choice().random_choice_f32(&currencies, &weights, 1)[0];
     //
-    //         println!(
-    //             "\t{}\t{}\t{:?}\t{}",
-    //             tier.ilvl, tier.weight, tier.value_ranges, trade_string
-    //         );
+    //         println!("{:?}", currency.name());
+    //         currency.craft(&mut item, &candidate_tiers);
     //     }
+    //
+    //     item.print_item();
+    //     println!();
     // }
 
-    let mut item = ItemState {
-        base_type: "Bow".to_string(),
-        item_level: 75,
-        rarity: Rarity::Normal,
-        mods: vec![],
-    };
-
-    let candidate_mods = get_valid_mods_for_item(&item);
-
-    let transmute_mods = Transmute::possible_tiers(&item, &candidate_mods);
-    item.mods.push(roll_mod(&transmute_mods));
-    item.rarity = Rarity::Magic;
-
-    let aug_mods = Augmentation::possible_tiers(&item, &candidate_mods);
-    item.mods.push(roll_mod(&aug_mods));
-
-    let regal_mods = Regal::possible_tiers(&item, &candidate_mods);
-    item.mods.push(roll_mod(&regal_mods));
-    item.rarity = Rarity::Rare;
-
-    for _ in 0..3 {
-        let exalt_mods = Exalt::possible_tiers(&item, &candidate_mods);
-        item.mods.push(roll_mod(&exalt_mods));
-    }
-
-    println!("{:?}", item);
-    item.print_item();
+    // Transmute
+    //      Rarity change
+    //      Slam
+    // Aug
+    //      Slam
+    // Regal
+    //      Rarity change
+    //      Slam
+    // Alch
+    //      4x Slam
+    // Chaos
+    //      Anal
+    //      Slam
+    // Exalt
+    //      Slam
+    // Annul
+    //      Anal
+    // Essence
+    //      Rarity change
+    //      Slam
+    // Perfect Essence
+    //      Anal
+    //      Slam
+    // --------
+    // Dextral
+    //      Filter Suffix
+    // Sinistral
+    //      Filter Prefix
+    // Greater
+    //      2x
+    // Homog
+    //      Filter Tags
+    // Whittle
+    //      Filter Tier
 }

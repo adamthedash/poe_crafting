@@ -28,7 +28,7 @@ impl ItemState {
         let mods = MODS.get().unwrap();
         self.mods
             .iter()
-            .filter(|tier_id| mods[&tiers[*tier_id].modifier].affix == Affix::Prefix)
+            .filter(|tier_id| mods[&tiers[*tier_id].mod_id].affix == Affix::Prefix)
             .count()
     }
 
@@ -37,7 +37,7 @@ impl ItemState {
         let mods = MODS.get().unwrap();
         self.mods
             .iter()
-            .filter(|tier_id| mods[&tiers[*tier_id].modifier].affix == Affix::Suffix)
+            .filter(|tier_id| mods[&tiers[*tier_id].mod_id].affix == Affix::Suffix)
             .count()
     }
 
@@ -52,7 +52,7 @@ impl ItemState {
         println!("=====================");
         for tier_id in &self.mods {
             let tier = &tiers[tier_id];
-            let modifier = &mods[&tier.modifier];
+            let modifier = &mods[&tier.mod_id];
 
             let formatters_key = modifier.stats.join("|");
             if let Some(formatters) = stat_formatters.get(&formatters_key) {

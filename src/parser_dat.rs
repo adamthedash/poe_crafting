@@ -177,7 +177,7 @@ pub fn load_mod_tiers(
                     Tier {
                         id: row.Id,
                         name: row.Name,
-                        modifier: mod_group,
+                        mod_id: mod_group,
                         ilvl: row.Level,
                         value_ranges,
                         mod_domain: row.Domain,

@@ -676,12 +676,16 @@ pub static CURRENCIES: LazyLock<Vec<CurrencyType>> = LazyLock::new(|| {
             },
         }),
         CurrencyType::PerfectEssence(PerfectEssence {
-            name: "Perfect Essence of Mind".to_string(),
+            name: "Perfect Essence of Battle".to_string(),
             tiers: {
                 let mut tiers = HashMap::new();
-                let bases = ["Belt", "Boots", "Gloves", "Helmet", "Ring", "Amulet"];
+                let bases = ["Bow", "One Hand Mace", "Dagger", "Spear"];
                 for base in bases {
-                    tiers.insert(base.to_string(), "IncreasedMana3".to_string());
+                    tiers.insert(base.to_string(), "EssenceAttackSkillLevel1H1".to_string());
+                }
+                let bases = ["Crossbow", "Two Hand Mace", "Warstaff"];
+                for base in bases {
+                    tiers.insert(base.to_string(), "EssenceAttackSkillLevel2H1".to_string());
                 }
 
                 tiers
