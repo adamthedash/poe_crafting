@@ -329,6 +329,90 @@ impl Currency for PerfectExalt {
     }
 }
 
+pub struct GreaterTransmute;
+impl Currency for GreaterTransmute {
+    fn name(&self) -> &'static str {
+        "Greater Transmute"
+    }
+
+    fn can_be_used(&self, item: &ItemState) -> bool {
+        Transmute.can_be_used(item)
+    }
+
+    fn possible_tiers(&self, item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId> {
+        let candidate_tiers = Transmute.possible_tiers(item, candidate_tiers);
+        filter_greater(&candidate_tiers)
+    }
+
+    fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId]) {
+        let candidate_tiers = self.possible_tiers(item, candidate_tiers);
+        Transmute.craft(item, &candidate_tiers);
+    }
+}
+
+pub struct PerfectTransmute;
+impl Currency for PerfectTransmute {
+    fn name(&self) -> &'static str {
+        "Perfect Transmute"
+    }
+
+    fn can_be_used(&self, item: &ItemState) -> bool {
+        Transmute.can_be_used(item)
+    }
+
+    fn possible_tiers(&self, item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId> {
+        let candidate_tiers = Transmute.possible_tiers(item, candidate_tiers);
+        filter_perfect(&candidate_tiers)
+    }
+
+    fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId]) {
+        let candidate_tiers = self.possible_tiers(item, candidate_tiers);
+        Transmute.craft(item, &candidate_tiers);
+    }
+}
+
+pub struct GreaterAugmentation;
+impl Currency for GreaterAugmentation {
+    fn name(&self) -> &'static str {
+        "Greater Augmentation"
+    }
+
+    fn can_be_used(&self, item: &ItemState) -> bool {
+        Augmentation.can_be_used(item)
+    }
+
+    fn possible_tiers(&self, item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId> {
+        let candidate_tiers = Augmentation.possible_tiers(item, candidate_tiers);
+        filter_greater(&candidate_tiers)
+    }
+
+    fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId]) {
+        let candidate_tiers = self.possible_tiers(item, candidate_tiers);
+        Augmentation.craft(item, &candidate_tiers);
+    }
+}
+
+pub struct PerfectAugmentation;
+impl Currency for PerfectAugmentation {
+    fn name(&self) -> &'static str {
+        "Perfect Augmentation"
+    }
+
+    fn can_be_used(&self, item: &ItemState) -> bool {
+        Augmentation.can_be_used(item)
+    }
+
+    fn possible_tiers(&self, item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId> {
+        let candidate_tiers = Augmentation.possible_tiers(item, candidate_tiers);
+        filter_perfect(&candidate_tiers)
+    }
+
+    fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId]) {
+        let candidate_tiers = self.possible_tiers(item, candidate_tiers);
+        Augmentation.craft(item, &candidate_tiers);
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CurrencyType {
     Transmute,
@@ -342,6 +426,10 @@ pub enum CurrencyType {
     PerfectChaos,
     GreaterExalt,
     PerfectExalt,
+    GreaterTransmute,
+    PerfectTransmute,
+    GreaterAugmentation,
+    PerfectAugmentation,
 }
 
 impl Currency for CurrencyType {
@@ -358,6 +446,10 @@ impl Currency for CurrencyType {
             Self::PerfectChaos => PerfectChaos.name(),
             Self::GreaterExalt => GreaterExalt.name(),
             Self::PerfectExalt => PerfectExalt.name(),
+            Self::GreaterTransmute => GreaterTransmute.name(),
+            Self::PerfectTransmute => PerfectTransmute.name(),
+            Self::GreaterAugmentation => GreaterAugmentation.name(),
+            Self::PerfectAugmentation => PerfectAugmentation.name(),
         }
     }
 
@@ -374,6 +466,10 @@ impl Currency for CurrencyType {
             Self::PerfectChaos => PerfectChaos.can_be_used(item),
             Self::GreaterExalt => GreaterExalt.can_be_used(item),
             Self::PerfectExalt => PerfectExalt.can_be_used(item),
+            Self::GreaterTransmute => GreaterTransmute.can_be_used(item),
+            Self::PerfectTransmute => PerfectTransmute.can_be_used(item),
+            Self::GreaterAugmentation => GreaterAugmentation.can_be_used(item),
+            Self::PerfectAugmentation => PerfectAugmentation.can_be_used(item),
         }
     }
 
@@ -390,6 +486,10 @@ impl Currency for CurrencyType {
             Self::PerfectChaos => PerfectChaos.possible_tiers(item, candidate_tiers),
             Self::GreaterExalt => GreaterExalt.possible_tiers(item, candidate_tiers),
             Self::PerfectExalt => PerfectExalt.possible_tiers(item, candidate_tiers),
+            Self::GreaterTransmute => GreaterTransmute.possible_tiers(item, candidate_tiers),
+            Self::PerfectTransmute => PerfectTransmute.possible_tiers(item, candidate_tiers),
+            Self::GreaterAugmentation => GreaterAugmentation.possible_tiers(item, candidate_tiers),
+            Self::PerfectAugmentation => PerfectAugmentation.possible_tiers(item, candidate_tiers),
         }
     }
 
@@ -406,6 +506,10 @@ impl Currency for CurrencyType {
             Self::PerfectChaos => PerfectChaos.craft(item, candidate_tiers),
             Self::GreaterExalt => GreaterExalt.craft(item, candidate_tiers),
             Self::PerfectExalt => PerfectExalt.craft(item, candidate_tiers),
+            Self::GreaterTransmute => GreaterTransmute.craft(item, candidate_tiers),
+            Self::PerfectTransmute => PerfectTransmute.craft(item, candidate_tiers),
+            Self::GreaterAugmentation => GreaterAugmentation.craft(item, candidate_tiers),
+            Self::PerfectAugmentation => PerfectAugmentation.craft(item, candidate_tiers),
         }
     }
 }
@@ -425,6 +529,10 @@ impl CurrencyType {
             Self::PerfectChaos,
             Self::GreaterExalt,
             Self::PerfectExalt,
+            Self::GreaterTransmute,
+            Self::PerfectTransmute,
+            Self::GreaterAugmentation,
+            Self::PerfectAugmentation,
         ]
     }
 }
