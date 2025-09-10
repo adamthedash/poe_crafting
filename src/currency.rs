@@ -30,7 +30,6 @@ pub trait Currency {
 }
 
 pub struct Transmute;
-
 impl Currency for Transmute {
     fn name(&self) -> &str {
         "Transmute"
@@ -51,7 +50,6 @@ impl Currency for Transmute {
 }
 
 pub struct Augmentation;
-
 impl Currency for Augmentation {
     fn name(&self) -> &str {
         "Augmentation"
@@ -99,7 +97,6 @@ impl Currency for Augmentation {
 }
 
 pub struct Regal;
-
 impl Currency for Regal {
     fn name(&self) -> &str {
         "Regal"
@@ -120,7 +117,6 @@ impl Currency for Regal {
 }
 
 pub struct Exalt;
-
 impl Currency for Exalt {
     fn name(&self) -> &str {
         "Exalt"
@@ -178,7 +174,6 @@ impl Currency for Exalt {
 }
 
 pub struct Annulment;
-
 impl Currency for Annulment {
     fn name(&self) -> &str {
         "Annulment"
@@ -200,7 +195,6 @@ impl Currency for Annulment {
 }
 
 pub struct Alchemy;
-
 impl Currency for Alchemy {
     fn name(&self) -> &str {
         "Alchemy"
@@ -223,7 +217,6 @@ impl Currency for Alchemy {
 }
 
 pub struct Chaos;
-
 impl Currency for Chaos {
     fn name(&self) -> &str {
         "Chaos"
@@ -413,7 +406,7 @@ impl Currency for PerfectAugmentation {
 }
 
 /// Lesser to Greater Essences
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct Essence {
     name: String,
     tiers: HashMap<BaseItemId, TierId>,
@@ -466,7 +459,82 @@ impl Currency for Essence {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PerfectEssence {
+    name: String,
+    tiers: HashMap<BaseItemId, TierId>,
+}
+impl Currency for PerfectEssence {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn can_be_used(&self, item: &ItemState) -> bool {
+        let mods = MODS.get().unwrap();
+        let tiers = TIERS.get().unwrap();
+
+        // must be magic
+        if item.rarity != Rarity::Rare {
+            return false;
+        }
+
+        // base type must match
+        let Some(new_tier_id) = self.tiers.get(&item.base_type) else {
+            return false;
+        };
+        let new_tier = &tiers[new_tier_id];
+        let new_mod = &mods[&new_tier.mod_id];
+
+        // Must not have a mod of the same family already
+        if item.mods.iter().any(|tier_id| {
+            let tier = &tiers[tier_id];
+            let modifier = &mods[&tier.mod_id];
+            modifier.family == new_mod.family
+        }) {
+            return false;
+        }
+
+        true
+    }
+
+    fn possible_tiers(&self, item: &ItemState, _candidate_tiers: &[TierId]) -> Vec<TierId> {
+        vec![self.tiers[&item.base_type].clone()]
+    }
+
+    fn craft(&self, item: &mut ItemState, _candidate_tiers: &[TierId]) {
+        let mods = MODS.get().unwrap();
+        let tiers = TIERS.get().unwrap();
+
+        let new_tier_id = &self.tiers[&item.base_type];
+        let new_tier = &tiers[new_tier_id];
+        let new_mod = &mods[&new_tier.mod_id];
+
+        let has_space = match new_mod.affix {
+            Affix::Prefix => item.num_prefixes() < 3,
+            Affix::Suffix => item.num_suffixes() < 3,
+            Affix::Corrupted => unreachable!(),
+        };
+
+        // If there's not enough space for the mod, remove a mod with the same affix
+        // Otherwise, remove a random mod
+        let mut remove_candidates = (0..item.mods.len()).collect::<Vec<_>>();
+        if !has_space {
+            remove_candidates.retain(|index| {
+                let tier_id = &item.mods[*index];
+                let tier = &tiers[tier_id];
+                let modifier = &mods[&tier.mod_id];
+                modifier.affix == new_mod.affix
+            });
+        }
+
+        let to_remove = random_range(0..item.mods.len());
+        item.mods.remove(to_remove);
+
+        // Add on the new mod
+        item.mods.push(new_tier_id.clone());
+    }
+}
+
+#[derive(Clone, Debug)]
 pub enum CurrencyType {
     Transmute,
     Augmentation,
@@ -589,5 +657,17 @@ pub static CURRENCIES: LazyLock<Vec<CurrencyType>> = LazyLock::new(|| {
         CurrencyType::PerfectTransmute,
         CurrencyType::GreaterAugmentation,
         CurrencyType::PerfectAugmentation,
+        CurrencyType::Essence(Essence {
+            name: "Lesser Essence of Mind".to_string(),
+            tiers: {
+                let mut tiers = HashMap::new();
+                let bases = ["Belt", "Boots", "Gloves", "Helmet", "Ring", "Amulet"];
+                for base in bases {
+                    tiers.insert(base.to_string(), "IncreasedMana3".to_string());
+                }
+
+                tiers
+            },
+        }),
     ]
 });
