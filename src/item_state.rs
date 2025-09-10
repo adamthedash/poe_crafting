@@ -1,4 +1,11 @@
-use crate::parser::{Affix, ItemBase, Modifier, Root, Tier};
+use std::collections::{HashMap, HashSet};
+
+use crate::{
+    FORMATTERS, ITEM_TIERS, MODS, TIERS,
+    types::{
+        Affix, BaseItemId, ModGroup, Modifier, StatFormatters, Tier, TierId, get_matching_formatter,
+    },
+};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Rarity {
@@ -8,47 +15,92 @@ pub enum Rarity {
 }
 
 #[derive(Debug)]
-pub struct ItemState<'a> {
-    pub base_type: &'a ItemBase,
+pub struct ItemState {
+    pub base_type: BaseItemId,
     pub item_level: u32,
     pub rarity: Rarity,
-    pub mods: Vec<(&'a Modifier, &'a Tier)>,
+    pub mods: Vec<TierId>,
 }
 
-impl ItemState<'_> {
+impl ItemState {
     pub fn num_prefixes(&self) -> usize {
+        let tiers = TIERS.get().unwrap();
+        let mods = MODS.get().unwrap();
         self.mods
             .iter()
-            .filter(|(m, _)| m.affix == Affix::Prefix)
+            .filter(|tier_id| mods[&tiers[*tier_id].modifier].affix == Affix::Prefix)
             .count()
     }
 
     pub fn num_suffixes(&self) -> usize {
+        let tiers = TIERS.get().unwrap();
+        let mods = MODS.get().unwrap();
         self.mods
             .iter()
-            .filter(|(m, _)| m.affix == Affix::Suffix)
+            .filter(|tier_id| mods[&tiers[*tier_id].modifier].affix == Affix::Suffix)
             .count()
+    }
+
+    pub fn print_item(&self) {
+        let tiers = TIERS.get().unwrap();
+        let mods = MODS.get().unwrap();
+        let stat_formatters = FORMATTERS.get().unwrap();
+
+        println!("{}", self.base_type);
+        println!("ilvl: {}", self.item_level);
+        println!("{:?}", self.rarity);
+        println!("=====================");
+        for tier_id in &self.mods {
+            let tier = &tiers[tier_id];
+            let modifier = &mods[&tier.modifier];
+
+            let formatters_key = modifier.stats.join("|");
+            if let Some(formatters) = stat_formatters.get(&formatters_key) {
+                let formatter = get_matching_formatter(
+                    formatters,
+                    &tier
+                        .value_ranges
+                        .iter()
+                        .map(|[min, _]| *min)
+                        .collect::<Vec<_>>(),
+                );
+                // Match on multi-stat formatter
+                let string = formatter.format_value_range(&tier.value_ranges);
+                println!("{}", string);
+            } else {
+                // Per-stat formatters
+                for (stat_id, value_range) in modifier.stats.iter().zip(tier.value_ranges.chunks(1))
+                {
+                    let Some(formatters) = stat_formatters.get(stat_id) else {
+                        println!("No formatter for stat: {:?}", stat_id);
+                        continue;
+                    };
+                    let formatter = get_matching_formatter(
+                        formatters,
+                        &tier
+                            .value_ranges
+                            .iter()
+                            .map(|[min, _]| *min)
+                            .collect::<Vec<_>>(),
+                    );
+                    // TODO: select formatter based on tier
+                    let string = formatter.format_value_range(value_range);
+
+                    println!("{}", string);
+                }
+            }
+        }
     }
 }
 
 /// Get the pool of mods that could ever roll on this item, regardless of its current state
-pub fn get_valid_mods_for_item<'a>(
-    item: &ItemState,
-    root: &'a Root,
-) -> Vec<(&'a Modifier, Vec<&'a Tier>)> {
-    root.basemods[&item.base_type.id_base]
-        .iter()
-        .filter_map(|mod_id| {
-            let tiers = root.tiers[mod_id][&item.base_type.id_base]
-                .iter()
-                .filter(|t| item.item_level >= t.ilvl)
-                .collect::<Vec<_>>();
+pub fn get_valid_mods_for_item<'a>(item: &ItemState) -> Vec<TierId> {
+    let tiers = TIERS.get().unwrap();
+    let item_tiers = ITEM_TIERS.get().unwrap();
 
-            if tiers.is_empty() {
-                None
-            } else {
-                Some((&root.modifiers.seq[root.modifiers.ind[mod_id]], tiers))
-            }
-        })
+    item_tiers[&item.base_type]
+        .iter()
+        .filter(|tier_id| item.item_level >= tiers[*tier_id].ilvl)
+        .cloned()
         .collect()
 }

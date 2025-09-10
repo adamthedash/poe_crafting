@@ -1,6 +1,10 @@
+use crate::types::Affix;
+use crate::types::Modifier;
+use crate::types::Tier;
 use crate::{
+    MODS, TIERS,
     item_state::{ItemState, Rarity},
-    parser::{Affix, Modifier, Tier},
+    types::TierId,
 };
 
 pub trait Currency {
@@ -9,28 +13,19 @@ pub trait Currency {
 
     /// Gets the pool of mods that can roll if this currency is used.
     /// all_mods: The pool of mods that can possibly roll on this item
-    fn possible_mods<'a>(
-        item: &ItemState,
-        all_mods: &[(&'a Modifier, Vec<&'a Tier>)],
-    ) -> Vec<(&'a Modifier, Vec<&'a Tier>)>;
+    fn possible_tiers<'a>(item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId>;
 }
 
 pub struct Transmute;
 
 impl Currency for Transmute {
-    /// Whether this currency can currently be used on the given item
     fn can_be_used(item: &ItemState) -> bool {
         item.rarity == Rarity::Normal
     }
 
-    /// Gets the pool of mods that can roll if this currency is used.
-    /// all_mods: The pool of mods that can possibly roll on this item
-    fn possible_mods<'a>(
-        _item: &ItemState,
-        all_mods: &[(&'a Modifier, Vec<&'a Tier>)],
-    ) -> Vec<(&'a Modifier, Vec<&'a Tier>)> {
+    fn possible_tiers<'a>(_item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId> {
         // TODO: Filter out non-standard mods, such as essences or abyss
-        all_mods.to_vec()
+        candidate_tiers.to_vec()
     }
 }
 
@@ -41,20 +36,24 @@ impl Currency for Augmentation {
         item.rarity == Rarity::Magic && item.mods.len() < 2
     }
 
-    fn possible_mods<'a>(
-        item: &ItemState,
-        all_mods: &[(&'a Modifier, Vec<&'a Tier>)],
-    ) -> Vec<(&'a Modifier, Vec<&'a Tier>)> {
-        let mut mods = all_mods.to_vec();
+    fn possible_tiers<'a>(item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId> {
+        let mods = MODS.get().unwrap();
+        let tiers = TIERS.get().unwrap();
 
-        if item.num_prefixes() == 1 {
-            mods.retain(|(m, _)| m.affix != Affix::Prefix);
-        }
-        if item.num_suffixes() == 1 {
-            mods.retain(|(m, _)| m.affix != Affix::Suffix);
-        }
+        let num_prefixes = item.num_prefixes();
+        let num_suffixes = item.num_suffixes();
 
-        mods
+        candidate_tiers
+            .iter()
+            .filter(|tier_id| {
+                let tier = &tiers[*tier_id];
+                let modifier = &mods[&tier.modifier];
+
+                modifier.affix == Affix::Prefix && num_prefixes < 1
+                    || modifier.affix == Affix::Suffix && num_suffixes < 1
+            })
+            .cloned()
+            .collect()
     }
 }
 
@@ -65,23 +64,27 @@ impl Currency for Regal {
         item.rarity == Rarity::Magic
     }
 
-    fn possible_mods<'a>(
-        item: &ItemState,
-        all_mods: &[(&'a Modifier, Vec<&'a Tier>)],
-    ) -> Vec<(&'a Modifier, Vec<&'a Tier>)> {
+    fn possible_tiers<'a>(item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId> {
+        let mods = MODS.get().unwrap();
+        let tiers = TIERS.get().unwrap();
+
         let existing_mod_groups = item
             .mods
             .iter()
-            .flat_map(|(m, _)| &m.modgroups)
+            .map(|tier_id| {
+                let tier = &tiers[tier_id];
+                &mods[&tier.modifier].family
+            })
             .collect::<Vec<_>>();
 
-        all_mods
+        candidate_tiers
             .iter()
             // Can't roll mods from the same mod group
-            .filter(|(m, _)| {
-                !m.modgroups
-                    .iter()
-                    .any(|group| existing_mod_groups.contains(&group))
+            .filter(|tier_id| {
+                let tier = &tiers[*tier_id];
+                let modifier = &mods[&tier.modifier];
+
+                !existing_mod_groups.contains(&&modifier.family)
             })
             .cloned()
             .collect()
@@ -95,31 +98,32 @@ impl Currency for Exalt {
         item.rarity == Rarity::Rare && item.mods.len() < 6
     }
 
-    fn possible_mods<'a>(
-        item: &ItemState,
-        all_mods: &[(&'a Modifier, Vec<&'a Tier>)],
-    ) -> Vec<(&'a Modifier, Vec<&'a Tier>)> {
-        let mut mods = all_mods.to_vec();
+    fn possible_tiers<'a>(item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId> {
+        let mods = MODS.get().unwrap();
+        let tiers = TIERS.get().unwrap();
 
-        if item.num_prefixes() == 3 {
-            mods.retain(|(m, _)| m.affix != Affix::Prefix);
-        }
-        if item.num_suffixes() == 3 {
-            mods.retain(|(m, _)| m.affix != Affix::Suffix);
-        }
+        let num_prefixes = item.num_prefixes();
+        let num_suffixes = item.num_suffixes();
 
         let existing_mod_groups = item
             .mods
             .iter()
-            .flat_map(|(m, _)| &m.modgroups)
+            .map(|tier_id| {
+                let tier = &tiers[tier_id];
+                &mods[&tier.modifier].family
+            })
             .collect::<Vec<_>>();
 
-        mods.iter()
-            // Can't roll mods from the same mod group
-            .filter(|(m, _)| {
-                !m.modgroups
-                    .iter()
-                    .any(|group| existing_mod_groups.contains(&group))
+        candidate_tiers
+            .iter()
+            .filter(|tier_id| {
+                let tier = &tiers[*tier_id];
+                let modifier = &mods[&tier.modifier];
+
+                let has_space = modifier.affix == Affix::Prefix && num_prefixes < 3
+                    || modifier.affix == Affix::Suffix && num_suffixes < 3;
+
+                has_space && !existing_mod_groups.contains(&&modifier.family)
             })
             .cloned()
             .collect()

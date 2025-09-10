@@ -1,11 +1,14 @@
 /**
 Parser for Craft of Exile's mod data JSON
+https://github.com/krakenbul/coe2weights
 */
 use serde_with::DisplayFromStr;
 use std::collections::HashMap;
 
 use serde::{Deserialize, Deserializer};
 use serde_with::serde_as;
+
+use crate::types;
 
 pub type BaseItemId = u32;
 pub type BaseGroupId = u32;
@@ -86,6 +89,17 @@ pub enum Affix {
     Prefix,
     Suffix,
     Socket,
+}
+
+impl Affix {
+    pub fn to_my_type(&self) -> types::Affix {
+        match self {
+            Affix::Prefix => types::Affix::Prefix,
+            Affix::Suffix => types::Affix::Suffix,
+            // TODO:
+            Affix::Socket => types::Affix::Corrupted,
+        }
+    }
 }
 
 #[serde_as]
