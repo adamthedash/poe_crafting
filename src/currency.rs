@@ -296,6 +296,8 @@ pub enum CurrencyType {
     Annulment,
     Alchemy,
     Chaos,
+    GreaterChaos,
+    PerfectChaos,
 }
 
 impl Currency for CurrencyType {
@@ -308,6 +310,8 @@ impl Currency for CurrencyType {
             Self::Annulment => Annulment.name(),
             Self::Alchemy => Alchemy.name(),
             Self::Chaos => Chaos.name(),
+            Self::GreaterChaos => GreaterChaos.name(),
+            Self::PerfectChaos => PerfectChaos.name(),
         }
     }
 
@@ -320,6 +324,8 @@ impl Currency for CurrencyType {
             Self::Annulment => Annulment.can_be_used(item),
             Self::Alchemy => Alchemy.can_be_used(item),
             Self::Chaos => Chaos.can_be_used(item),
+            Self::GreaterChaos => GreaterChaos.can_be_used(item),
+            Self::PerfectChaos => PerfectChaos.can_be_used(item),
         }
     }
 
@@ -332,6 +338,8 @@ impl Currency for CurrencyType {
             Self::Annulment => Annulment.possible_tiers(item, candidate_tiers),
             Self::Alchemy => Alchemy.possible_tiers(item, candidate_tiers),
             Self::Chaos => Chaos.possible_tiers(item, candidate_tiers),
+            Self::GreaterChaos => GreaterChaos.possible_tiers(item, candidate_tiers),
+            Self::PerfectChaos => PerfectChaos.possible_tiers(item, candidate_tiers),
         }
     }
 
@@ -344,6 +352,8 @@ impl Currency for CurrencyType {
             Self::Annulment => Annulment.craft(item, candidate_tiers),
             Self::Alchemy => Alchemy.craft(item, candidate_tiers),
             Self::Chaos => Chaos.craft(item, candidate_tiers),
+            Self::GreaterChaos => GreaterChaos.craft(item, candidate_tiers),
+            Self::PerfectChaos => PerfectChaos.craft(item, candidate_tiers),
         }
     }
 }
@@ -359,6 +369,8 @@ impl CurrencyType {
             Self::Annulment,
             Self::Alchemy,
             Self::Chaos,
+            Self::GreaterChaos,
+            Self::PerfectChaos,
         ]
     }
 }
