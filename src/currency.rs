@@ -1,11 +1,12 @@
 use std::cell::OnceCell;
+use std::collections::HashMap;
 use std::sync::LazyLock;
 
 use rand::random_range;
 use random_choice::random_choice;
 
 use crate::crafting::{filter_greater, filter_perfect};
-use crate::types::Affix;
+use crate::types::{Affix, BaseItemId};
 use crate::{
     MODS, TIERS,
     item_state::{ItemState, Rarity},
@@ -13,7 +14,7 @@ use crate::{
 };
 
 pub trait Currency {
-    fn name(&self) -> &'static str;
+    fn name(&self) -> &str;
 
     /// Whether this currency can currently be used on the given item
     fn can_be_used(&self, item: &ItemState) -> bool;
@@ -31,7 +32,7 @@ pub trait Currency {
 pub struct Transmute;
 
 impl Currency for Transmute {
-    fn name(&self) -> &'static str {
+    fn name(&self) -> &str {
         "Transmute"
     }
 
@@ -52,7 +53,7 @@ impl Currency for Transmute {
 pub struct Augmentation;
 
 impl Currency for Augmentation {
-    fn name(&self) -> &'static str {
+    fn name(&self) -> &str {
         "Augmentation"
     }
 
@@ -72,7 +73,7 @@ impl Currency for Augmentation {
             .iter()
             .filter(|tier_id| {
                 let tier = &tiers[*tier_id];
-                let modifier = &mods[&tier.modifier];
+                let modifier = &mods[&tier.mod_id];
 
                 modifier.affix == Affix::Prefix && num_prefixes < 1
                     || modifier.affix == Affix::Suffix && num_suffixes < 1
@@ -100,7 +101,7 @@ impl Currency for Augmentation {
 pub struct Regal;
 
 impl Currency for Regal {
-    fn name(&self) -> &'static str {
+    fn name(&self) -> &str {
         "Regal"
     }
 
@@ -121,7 +122,7 @@ impl Currency for Regal {
 pub struct Exalt;
 
 impl Currency for Exalt {
-    fn name(&self) -> &'static str {
+    fn name(&self) -> &str {
         "Exalt"
     }
 
@@ -136,12 +137,12 @@ impl Currency for Exalt {
         let num_prefixes = item.num_prefixes();
         let num_suffixes = item.num_suffixes();
 
-        let existing_mod_groups = item
+        let existing_mod_families = item
             .mods
             .iter()
             .map(|tier_id| {
                 let tier = &tiers[tier_id];
-                &mods[&tier.modifier].family
+                &mods[&tier.mod_id].family
             })
             .collect::<Vec<_>>();
 
@@ -149,12 +150,12 @@ impl Currency for Exalt {
             .iter()
             .filter(|tier_id| {
                 let tier = &tiers[*tier_id];
-                let modifier = &mods[&tier.modifier];
+                let modifier = &mods[&tier.mod_id];
 
                 let has_space = modifier.affix == Affix::Prefix && num_prefixes < 3
                     || modifier.affix == Affix::Suffix && num_suffixes < 3;
 
-                has_space && !existing_mod_groups.contains(&&modifier.family)
+                has_space && !existing_mod_families.contains(&&modifier.family)
             })
             .cloned()
             .collect()
@@ -179,7 +180,7 @@ impl Currency for Exalt {
 pub struct Annulment;
 
 impl Currency for Annulment {
-    fn name(&self) -> &'static str {
+    fn name(&self) -> &str {
         "Annulment"
     }
 
@@ -201,7 +202,7 @@ impl Currency for Annulment {
 pub struct Alchemy;
 
 impl Currency for Alchemy {
-    fn name(&self) -> &'static str {
+    fn name(&self) -> &str {
         "Alchemy"
     }
 
@@ -224,7 +225,7 @@ impl Currency for Alchemy {
 pub struct Chaos;
 
 impl Currency for Chaos {
-    fn name(&self) -> &'static str {
+    fn name(&self) -> &str {
         "Chaos"
     }
 
@@ -247,7 +248,7 @@ impl Currency for Chaos {
 
 pub struct GreaterChaos;
 impl Currency for GreaterChaos {
-    fn name(&self) -> &'static str {
+    fn name(&self) -> &str {
         "Greater Chaos"
     }
 
@@ -255,20 +256,19 @@ impl Currency for GreaterChaos {
         Chaos.can_be_used(item)
     }
 
-    fn possible_tiers(&self, item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId> {
-        let candidate_tiers = Chaos.possible_tiers(item, candidate_tiers);
-        filter_greater(&candidate_tiers)
+    fn possible_tiers(&self, _item: &ItemState, _candidate_tiers: &[TierId]) -> Vec<TierId> {
+        vec![]
     }
 
     fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId]) {
-        let candidate_tiers = self.possible_tiers(item, candidate_tiers);
+        let candidate_tiers = filter_greater(candidate_tiers);
         Chaos.craft(item, &candidate_tiers);
     }
 }
 
 pub struct PerfectChaos;
 impl Currency for PerfectChaos {
-    fn name(&self) -> &'static str {
+    fn name(&self) -> &str {
         "Perfect Chaos"
     }
 
@@ -276,20 +276,19 @@ impl Currency for PerfectChaos {
         Chaos.can_be_used(item)
     }
 
-    fn possible_tiers(&self, item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId> {
-        let candidate_tiers = Chaos.possible_tiers(item, candidate_tiers);
-        filter_perfect(&candidate_tiers)
+    fn possible_tiers(&self, _item: &ItemState, _candidate_tiers: &[TierId]) -> Vec<TierId> {
+        vec![]
     }
 
     fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId]) {
-        let candidate_tiers = self.possible_tiers(item, candidate_tiers);
+        let candidate_tiers = filter_perfect(candidate_tiers);
         Chaos.craft(item, &candidate_tiers);
     }
 }
 
 pub struct GreaterExalt;
 impl Currency for GreaterExalt {
-    fn name(&self) -> &'static str {
+    fn name(&self) -> &str {
         "Greater Exalt"
     }
 
@@ -310,7 +309,7 @@ impl Currency for GreaterExalt {
 
 pub struct PerfectExalt;
 impl Currency for PerfectExalt {
-    fn name(&self) -> &'static str {
+    fn name(&self) -> &str {
         "Perfect Exalt"
     }
 
@@ -331,7 +330,7 @@ impl Currency for PerfectExalt {
 
 pub struct GreaterTransmute;
 impl Currency for GreaterTransmute {
-    fn name(&self) -> &'static str {
+    fn name(&self) -> &str {
         "Greater Transmute"
     }
 
@@ -352,7 +351,7 @@ impl Currency for GreaterTransmute {
 
 pub struct PerfectTransmute;
 impl Currency for PerfectTransmute {
-    fn name(&self) -> &'static str {
+    fn name(&self) -> &str {
         "Perfect Transmute"
     }
 
@@ -373,7 +372,7 @@ impl Currency for PerfectTransmute {
 
 pub struct GreaterAugmentation;
 impl Currency for GreaterAugmentation {
-    fn name(&self) -> &'static str {
+    fn name(&self) -> &str {
         "Greater Augmentation"
     }
 
@@ -394,7 +393,7 @@ impl Currency for GreaterAugmentation {
 
 pub struct PerfectAugmentation;
 impl Currency for PerfectAugmentation {
-    fn name(&self) -> &'static str {
+    fn name(&self) -> &str {
         "Perfect Augmentation"
     }
 
@@ -410,6 +409,59 @@ impl Currency for PerfectAugmentation {
     fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId]) {
         let candidate_tiers = self.possible_tiers(item, candidate_tiers);
         Augmentation.craft(item, &candidate_tiers);
+    }
+}
+
+/// Lesser to Greater Essences
+pub struct Essence {
+    name: String,
+    tiers: HashMap<BaseItemId, TierId>,
+}
+impl Currency for Essence {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn can_be_used(&self, item: &ItemState) -> bool {
+        let mods = MODS.get().unwrap();
+        let tiers = TIERS.get().unwrap();
+
+        // must be magic
+        if item.rarity != Rarity::Magic {
+            return false;
+        }
+
+        // base type must match
+        let Some(new_tier_id) = self.tiers.get(&item.base_type) else {
+            return false;
+        };
+        let new_tier = &tiers[new_tier_id];
+        let new_mod = &mods[&new_tier.mod_id];
+
+        // Must not have a mod of the same family already
+        if item.mods.iter().any(|tier_id| {
+            let tier = &tiers[tier_id];
+            let modifier = &mods[&tier.mod_id];
+            modifier.family == new_mod.family
+        }) {
+            return false;
+        }
+
+        // Must have space for the new mod
+        match new_mod.affix {
+            Affix::Prefix => item.num_prefixes() < 3,
+            Affix::Suffix => item.num_suffixes() < 3,
+            Affix::Corrupted => unreachable!(),
+        }
+    }
+
+    fn possible_tiers(&self, item: &ItemState, _candidate_tiers: &[TierId]) -> Vec<TierId> {
+        vec![self.tiers[&item.base_type].clone()]
+    }
+
+    fn craft(&self, item: &mut ItemState, _candidate_tiers: &[TierId]) {
+        item.rarity = Rarity::Rare;
+        item.mods.push(self.tiers[&item.base_type].clone());
     }
 }
 
@@ -433,7 +485,7 @@ pub enum CurrencyType {
 }
 
 impl Currency for CurrencyType {
-    fn name(&self) -> &'static str {
+    fn name(&self) -> &str {
         match self {
             Self::Transmute => Transmute.name(),
             Self::Augmentation => Augmentation.name(),
@@ -514,26 +566,22 @@ impl Currency for CurrencyType {
     }
 }
 
-impl CurrencyType {
-    /// Get all available currency types
-    pub const fn all() -> &'static [CurrencyType] {
-        &[
-            Self::Transmute,
-            Self::Augmentation,
-            Self::Regal,
-            Self::Exalt,
-            Self::Annulment,
-            Self::Alchemy,
-            Self::Chaos,
-            Self::GreaterChaos,
-            Self::PerfectChaos,
-            Self::GreaterExalt,
-            Self::PerfectExalt,
-            Self::GreaterTransmute,
-            Self::PerfectTransmute,
-            Self::GreaterAugmentation,
-            Self::PerfectAugmentation,
-        ]
-    }
-}
-pub const CURRENCIES: &[CurrencyType] = CurrencyType::all();
+pub static CURRENCIES: LazyLock<Vec<CurrencyType>> = LazyLock::new(|| {
+    vec![
+        CurrencyType::Transmute,
+        CurrencyType::Augmentation,
+        CurrencyType::Regal,
+        CurrencyType::Exalt,
+        CurrencyType::Annulment,
+        CurrencyType::Alchemy,
+        CurrencyType::Chaos,
+        CurrencyType::GreaterChaos,
+        CurrencyType::PerfectChaos,
+        CurrencyType::GreaterExalt,
+        CurrencyType::PerfectExalt,
+        CurrencyType::GreaterTransmute,
+        CurrencyType::PerfectTransmute,
+        CurrencyType::GreaterAugmentation,
+        CurrencyType::PerfectAugmentation,
+    ]
+});
