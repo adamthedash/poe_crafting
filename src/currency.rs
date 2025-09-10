@@ -413,6 +413,7 @@ impl Currency for PerfectAugmentation {
 }
 
 /// Lesser to Greater Essences
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Essence {
     name: String,
     tiers: HashMap<BaseItemId, TierId>,
@@ -465,7 +466,7 @@ impl Currency for Essence {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CurrencyType {
     Transmute,
     Augmentation,
@@ -482,6 +483,7 @@ pub enum CurrencyType {
     PerfectTransmute,
     GreaterAugmentation,
     PerfectAugmentation,
+    Essence(Essence),
 }
 
 impl Currency for CurrencyType {
@@ -502,6 +504,7 @@ impl Currency for CurrencyType {
             Self::PerfectTransmute => PerfectTransmute.name(),
             Self::GreaterAugmentation => GreaterAugmentation.name(),
             Self::PerfectAugmentation => PerfectAugmentation.name(),
+            Self::Essence(essence) => essence.name(),
         }
     }
 
@@ -522,6 +525,7 @@ impl Currency for CurrencyType {
             Self::PerfectTransmute => PerfectTransmute.can_be_used(item),
             Self::GreaterAugmentation => GreaterAugmentation.can_be_used(item),
             Self::PerfectAugmentation => PerfectAugmentation.can_be_used(item),
+            Self::Essence(essence) => essence.can_be_used(item),
         }
     }
 
@@ -542,6 +546,7 @@ impl Currency for CurrencyType {
             Self::PerfectTransmute => PerfectTransmute.possible_tiers(item, candidate_tiers),
             Self::GreaterAugmentation => GreaterAugmentation.possible_tiers(item, candidate_tiers),
             Self::PerfectAugmentation => PerfectAugmentation.possible_tiers(item, candidate_tiers),
+            Self::Essence(essence) => essence.possible_tiers(item, candidate_tiers),
         }
     }
 
@@ -562,6 +567,7 @@ impl Currency for CurrencyType {
             Self::PerfectTransmute => PerfectTransmute.craft(item, candidate_tiers),
             Self::GreaterAugmentation => GreaterAugmentation.craft(item, candidate_tiers),
             Self::PerfectAugmentation => PerfectAugmentation.craft(item, candidate_tiers),
+            Self::Essence(essence) => essence.craft(item, candidate_tiers),
         }
     }
 }
