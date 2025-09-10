@@ -459,6 +459,7 @@ impl Currency for Essence {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct PerfectEssence {
     name: String,
     tiers: HashMap<BaseItemId, TierId>,
@@ -552,6 +553,7 @@ pub enum CurrencyType {
     GreaterAugmentation,
     PerfectAugmentation,
     Essence(Essence),
+    PerfectEssence(PerfectEssence),
 }
 
 impl Currency for CurrencyType {
@@ -573,6 +575,7 @@ impl Currency for CurrencyType {
             Self::GreaterAugmentation => GreaterAugmentation.name(),
             Self::PerfectAugmentation => PerfectAugmentation.name(),
             Self::Essence(essence) => essence.name(),
+            Self::PerfectEssence(essence) => essence.name(),
         }
     }
 
@@ -594,6 +597,7 @@ impl Currency for CurrencyType {
             Self::GreaterAugmentation => GreaterAugmentation.can_be_used(item),
             Self::PerfectAugmentation => PerfectAugmentation.can_be_used(item),
             Self::Essence(essence) => essence.can_be_used(item),
+            Self::PerfectEssence(essence) => essence.can_be_used(item),
         }
     }
 
@@ -615,6 +619,7 @@ impl Currency for CurrencyType {
             Self::GreaterAugmentation => GreaterAugmentation.possible_tiers(item, candidate_tiers),
             Self::PerfectAugmentation => PerfectAugmentation.possible_tiers(item, candidate_tiers),
             Self::Essence(essence) => essence.possible_tiers(item, candidate_tiers),
+            Self::PerfectEssence(essence) => essence.possible_tiers(item, candidate_tiers),
         }
     }
 
@@ -636,6 +641,7 @@ impl Currency for CurrencyType {
             Self::GreaterAugmentation => GreaterAugmentation.craft(item, candidate_tiers),
             Self::PerfectAugmentation => PerfectAugmentation.craft(item, candidate_tiers),
             Self::Essence(essence) => essence.craft(item, candidate_tiers),
+            Self::PerfectEssence(essence) => essence.craft(item, candidate_tiers),
         }
     }
 }
@@ -659,6 +665,18 @@ pub static CURRENCIES: LazyLock<Vec<CurrencyType>> = LazyLock::new(|| {
         CurrencyType::PerfectAugmentation,
         CurrencyType::Essence(Essence {
             name: "Lesser Essence of Mind".to_string(),
+            tiers: {
+                let mut tiers = HashMap::new();
+                let bases = ["Belt", "Boots", "Gloves", "Helmet", "Ring", "Amulet"];
+                for base in bases {
+                    tiers.insert(base.to_string(), "IncreasedMana3".to_string());
+                }
+
+                tiers
+            },
+        }),
+        CurrencyType::PerfectEssence(PerfectEssence {
+            name: "Perfect Essence of Mind".to_string(),
             tiers: {
                 let mut tiers = HashMap::new();
                 let bases = ["Belt", "Boots", "Gloves", "Helmet", "Ring", "Amulet"];
