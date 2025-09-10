@@ -4,6 +4,7 @@ use std::sync::LazyLock;
 use rand::random_range;
 use random_choice::random_choice;
 
+use crate::crafting::{filter_greater, filter_perfect};
 use crate::types::Affix;
 use crate::{
     MODS, TIERS,
@@ -244,6 +245,48 @@ impl Currency for Chaos {
     }
 }
 
+pub struct GreaterChaos;
+impl Currency for GreaterChaos {
+    fn name(&self) -> &'static str {
+        "Greater Chaos"
+    }
+
+    fn can_be_used(&self, item: &ItemState) -> bool {
+        Chaos.can_be_used(item)
+    }
+
+    fn possible_tiers(&self, item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId> {
+        let candidate_tiers = Chaos.possible_tiers(item, candidate_tiers);
+        filter_greater(&candidate_tiers)
+    }
+
+    fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId]) {
+        let candidate_tiers = self.possible_tiers(item, candidate_tiers);
+        Chaos.craft(item, &candidate_tiers);
+    }
+}
+
+pub struct PerfectChaos;
+impl Currency for PerfectChaos {
+    fn name(&self) -> &'static str {
+        "Perfect Chaos"
+    }
+
+    fn can_be_used(&self, item: &ItemState) -> bool {
+        Chaos.can_be_used(item)
+    }
+
+    fn possible_tiers(&self, item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId> {
+        let candidate_tiers = Chaos.possible_tiers(item, candidate_tiers);
+        filter_perfect(&candidate_tiers)
+    }
+
+    fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId]) {
+        let candidate_tiers = self.possible_tiers(item, candidate_tiers);
+        Chaos.craft(item, &candidate_tiers);
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CurrencyType {
     Transmute,
@@ -258,49 +301,65 @@ pub enum CurrencyType {
 impl Currency for CurrencyType {
     fn name(&self) -> &'static str {
         match self {
-            Self::Transmute => Transmute::name(),
-            Self::Augmentation => Augmentation::name(),
-            Self::Regal => Regal::name(),
-            Self::Exalt => Exalt::name(),
-            Self::Annulment => Annulment::name(),
-            Self::Alchemy => Alchemy::name(),
-            Self::Chaos => Chaos::name(),
+            Self::Transmute => Transmute.name(),
+            Self::Augmentation => Augmentation.name(),
+            Self::Regal => Regal.name(),
+            Self::Exalt => Exalt.name(),
+            Self::Annulment => Annulment.name(),
+            Self::Alchemy => Alchemy.name(),
+            Self::Chaos => Chaos.name(),
         }
     }
 
     fn can_be_used(&self, item: &ItemState) -> bool {
         match self {
-            Self::Transmute => Transmute::can_be_used(item),
-            Self::Augmentation => Augmentation::can_be_used(item),
-            Self::Regal => Regal::can_be_used(item),
-            Self::Exalt => Exalt::can_be_used(item),
-            Self::Annulment => Annulment::can_be_used(item),
-            Self::Alchemy => Alchemy::can_be_used(item),
-            Self::Chaos => Chaos::can_be_used(item),
+            Self::Transmute => Transmute.can_be_used(item),
+            Self::Augmentation => Augmentation.can_be_used(item),
+            Self::Regal => Regal.can_be_used(item),
+            Self::Exalt => Exalt.can_be_used(item),
+            Self::Annulment => Annulment.can_be_used(item),
+            Self::Alchemy => Alchemy.can_be_used(item),
+            Self::Chaos => Chaos.can_be_used(item),
         }
     }
 
     fn possible_tiers(&self, item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId> {
         match self {
-            Self::Transmute => Transmute::possible_tiers(item, candidate_tiers),
-            Self::Augmentation => Augmentation::possible_tiers(item, candidate_tiers),
-            Self::Regal => Regal::possible_tiers(item, candidate_tiers),
-            Self::Exalt => Exalt::possible_tiers(item, candidate_tiers),
-            Self::Annulment => Annulment::possible_tiers(item, candidate_tiers),
-            Self::Alchemy => Alchemy::possible_tiers(item, candidate_tiers),
-            Self::Chaos => Chaos::possible_tiers(item, candidate_tiers),
+            Self::Transmute => Transmute.possible_tiers(item, candidate_tiers),
+            Self::Augmentation => Augmentation.possible_tiers(item, candidate_tiers),
+            Self::Regal => Regal.possible_tiers(item, candidate_tiers),
+            Self::Exalt => Exalt.possible_tiers(item, candidate_tiers),
+            Self::Annulment => Annulment.possible_tiers(item, candidate_tiers),
+            Self::Alchemy => Alchemy.possible_tiers(item, candidate_tiers),
+            Self::Chaos => Chaos.possible_tiers(item, candidate_tiers),
         }
     }
 
     fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId]) {
         match self {
-            Self::Transmute => Transmute::craft(item, candidate_tiers),
-            Self::Augmentation => Augmentation::craft(item, candidate_tiers),
-            Self::Regal => Regal::craft(item, candidate_tiers),
-            Self::Exalt => Exalt::craft(item, candidate_tiers),
-            Self::Annulment => Annulment::craft(item, candidate_tiers),
-            Self::Alchemy => Alchemy::craft(item, candidate_tiers),
-            Self::Chaos => Chaos::craft(item, candidate_tiers),
+            Self::Transmute => Transmute.craft(item, candidate_tiers),
+            Self::Augmentation => Augmentation.craft(item, candidate_tiers),
+            Self::Regal => Regal.craft(item, candidate_tiers),
+            Self::Exalt => Exalt.craft(item, candidate_tiers),
+            Self::Annulment => Annulment.craft(item, candidate_tiers),
+            Self::Alchemy => Alchemy.craft(item, candidate_tiers),
+            Self::Chaos => Chaos.craft(item, candidate_tiers),
         }
     }
 }
+
+impl CurrencyType {
+    /// Get all available currency types
+    pub const fn all() -> &'static [CurrencyType] {
+        &[
+            Self::Transmute,
+            Self::Augmentation,
+            Self::Regal,
+            Self::Exalt,
+            Self::Annulment,
+            Self::Alchemy,
+            Self::Chaos,
+        ]
+    }
+}
+pub const CURRENCIES: &[CurrencyType] = CurrencyType::all();
