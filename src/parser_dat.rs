@@ -150,6 +150,7 @@ pub fn load_mod_tiers(
                 // TODO: Skip empty families?
                 let mod_family = &mod_familites[*row.Families.first().unwrap_or(&0) as usize];
 
+                println!("{:?} {:?}", row.Id, row.GenerationType);
                 let affix = match row.GenerationType {
                     1 => Affix::Prefix,
                     2 => Affix::Suffix,

@@ -131,10 +131,10 @@ impl Currency for Regal {
     fn can_be_used(
         &self,
         item: &ItemState,
-        candidate_tiers: &[TierId],
-        omens: &HashSet<OmenId>,
+        _candidate_tiers: &[TierId],
+        _omens: &HashSet<OmenId>,
     ) -> bool {
-        item.rarity == Rarity::Magic && Exalt.can_be_used(item, candidate_tiers, omens)
+        item.rarity == Rarity::Magic
     }
 
     fn possible_tiers(&self, item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId> {
@@ -184,16 +184,11 @@ impl Currency for Exalt {
             // Filter out based on current item state
             let candidate_tiers =
                 self.possible_tiers(item, &candidate_tiers.cloned().collect::<Vec<_>>());
+            if candidate_tiers.is_empty() {
+                return false;
+            }
 
-            // let unique_families = candidate_tiers
-            //     .iter()
-            //     .map(|tier_id| {
-            //         let tier = &tiers[tier_id];
-            //         let modifier = &mods[&tier.mod_id];
-            //
-            //         &modifier.family
-            //     })
-            //     .collect::<HashSet<_>>();
+            // Which affixes can be slammed
             let unique_affixes = candidate_tiers
                 .iter()
                 .map(|tier_id| {
@@ -204,15 +199,19 @@ impl Currency for Exalt {
                 })
                 .collect::<HashSet<_>>();
 
-            let num_slams = if omens.contains("Greater") { 2 } else { 1 };
-            if unique_affixes.len() == 1 {
-                if unique_affixes.contains(&Affix::Suffix) {
-                    3 - item.num_suffixes() >= num_slams
+            if omens.contains("Greater") {
+                if unique_affixes.len() == 1 {
+                    if unique_affixes.contains(&Affix::Suffix) {
+                        item.num_suffixes() <= 1
+                    } else {
+                        item.num_prefixes() <= 1
+                    }
                 } else {
-                    3 - item.num_prefixes() >= num_slams
+                    item.mods.len() <= 4
                 }
             } else {
-                6 - item.mods.len() >= num_slams
+                // By now we've checked if anything is slammable for 1 mod
+                true
             }
         }
     }
@@ -221,17 +220,14 @@ impl Currency for Exalt {
         let mut candidate_tiers: Box<dyn Iterator<Item = &TierId>> =
             Box::new(candidate_tiers.iter());
 
-        let existing_mod_families = item.mod_familities();
-        candidate_tiers = Box::new(filter_out_families(candidate_tiers, existing_mod_families));
+        candidate_tiers = Box::new(filter_out_families(candidate_tiers, item.mod_familities()));
 
-        let num_prefixes = item.num_prefixes();
-        if num_prefixes == 3 {
-            candidate_tiers = Box::new(filter_affix(candidate_tiers, Affix::Prefix));
+        if item.num_prefixes() == 3 {
+            candidate_tiers = Box::new(filter_affix(candidate_tiers, Affix::Suffix));
         }
 
-        let num_suffixes = item.num_suffixes();
-        if num_suffixes == 3 {
-            candidate_tiers = Box::new(filter_affix(candidate_tiers, Affix::Suffix));
+        if item.num_suffixes() == 3 {
+            candidate_tiers = Box::new(filter_affix(candidate_tiers, Affix::Prefix));
         }
 
         candidate_tiers.cloned().collect()

@@ -97,6 +97,9 @@ fn main() {
     let item_tiers = ITEM_TIERS.get().unwrap();
     let formatters = FORMATTERS.get().unwrap();
 
+    println!("{:?}", tiers["EvasionGrantsDeflection5"]);
+    panic!();
+
     let bases = item_tiers.keys().collect::<Vec<_>>();
     let weights = vec![1.; bases.len()];
 
@@ -110,7 +113,7 @@ fn main() {
         };
         let candidate_tiers = get_valid_mods_for_item(&item);
 
-        for _ in 0..10 {
+        for _ in 0..1000 {
             // Select a random currency
             let currencies = CURRENCIES
                 .iter()
@@ -144,8 +147,15 @@ fn main() {
                     .map(|o| (*o).clone()),
             );
 
-            println!("{:?} {:?}", omens, currency.name());
+            let before = item.clone();
             currency.craft(&mut item, &candidate_tiers, &omens);
+            if !item.is_valid() {
+                println!("invalid item");
+                before.print_item();
+                println!("- {:?} {:?} ->", omens, currency);
+                item.print_item();
+                panic!()
+            }
         }
 
         item.print_item();

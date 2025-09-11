@@ -34,6 +34,7 @@ pub struct Modifier {
     pub group: ModGroup,
     /// Eg. Fire, Attack
     pub tags: HashSet<ModTag>,
+    /// Where this mod rolls
     pub affix: Affix,
     pub mod_type: ModType,
     /// The individual stats provided by this mod Eg. 2 for hybrid attack/accuracy

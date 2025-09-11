@@ -2,20 +2,17 @@ use std::collections::HashSet;
 
 use crate::{
     FORMATTERS, ITEM_TIERS, MODS, TIERS,
-    types::{
-        Affix, BaseItemId, ModFamily, ModTag, TierId,
-        get_matching_formatter,
-    },
+    types::{Affix, BaseItemId, ModFamily, ModTag, TierId, get_matching_formatter},
 };
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Rarity {
     Normal,
     Magic,
     Rare,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ItemState {
     pub base_type: BaseItemId,
     pub item_level: u32,
@@ -124,6 +121,45 @@ impl ItemState {
                 }
             }
         }
+    }
+
+    /// Checks whether the current state of the item is valid
+    pub fn is_valid(&self) -> bool {
+        let tiers = TIERS.get().unwrap();
+        let mods = MODS.get().unwrap();
+
+        let num_mods_ok = match self.rarity {
+            Rarity::Normal => self.mods.is_empty(),
+            Rarity::Magic => self.mods.len() <= 2,
+            Rarity::Rare => self.mods.len() <= 6,
+        };
+
+        let num_affixes_ok = match self.rarity {
+            Rarity::Normal => true,
+            Rarity::Magic => self.num_prefixes() <= 1 && self.num_suffixes() <= 1,
+            Rarity::Rare => self.num_prefixes() <= 3 && self.num_suffixes() <= 3,
+        };
+
+        let mod_ilvls_ok = self.mods.iter().all(|tier_id| {
+            let tier = &tiers[tier_id];
+
+            tier.ilvl <= self.item_level
+        });
+
+        let mod_families_ok = self
+            .mods
+            .iter()
+            .map(|tier_id| {
+                let tier = &tiers[tier_id];
+                let modifier = &mods[&tier.mod_id];
+
+                &modifier.family
+            })
+            .collect::<HashSet<_>>()
+            .len()
+            == self.mods.len();
+
+        num_mods_ok && num_affixes_ok && mod_ilvls_ok && mod_families_ok
     }
 }
 
