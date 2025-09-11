@@ -11,18 +11,8 @@ use crate::types::{Affix, BaseItemId};
 use crate::{
     MODS, TIERS,
     item_state::{ItemState, Rarity},
-    types::TierId,
+    types::{OmenId, TierId},
 };
-
-type OmenId = String;
-
-//  OMENS
-//  Dextral
-//  Sinistral
-//  Homgenising
-//  Whittling
-//  Greater
-//
 
 pub trait Currency {
     fn name(&self) -> &str;
@@ -34,11 +24,6 @@ pub trait Currency {
         candidate_tiers: &[TierId],
         omens: &HashSet<OmenId>,
     ) -> bool;
-
-    /// Gets the pool of mods that can roll if this currency is used.
-    /// Assumes that it has been verified with Self::can_be_used
-    /// candidate_tiers: The pool of mods that can possibly roll on this item
-    fn possible_tiers(&self, item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId>;
 
     /// Use this currency on the item.
     /// Assumes that it has been verified with Self::can_be_used
@@ -58,10 +43,6 @@ impl Currency for Transmute {
         _omens: &HashSet<OmenId>,
     ) -> bool {
         item.rarity == Rarity::Normal
-    }
-
-    fn possible_tiers(&self, item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId> {
-        Augmentation.possible_tiers(item, candidate_tiers)
     }
 
     fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], _omens: &HashSet<OmenId>) {
@@ -86,37 +67,30 @@ impl Currency for Augmentation {
         item.rarity == Rarity::Magic && item.mods.len() < 2
     }
 
-    fn possible_tiers(&self, item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId> {
-        // TODO: Filter out non-standard mods, such as essences or abyss
-        let mods = MODS.get().unwrap();
-        let tiers = TIERS.get().unwrap();
-
-        let num_prefixes = item.num_prefixes();
-        let num_suffixes = item.num_suffixes();
-
-        candidate_tiers
-            .iter()
-            .filter(|tier_id| {
-                let tier = &tiers[*tier_id];
-
-                tier.affix == Affix::Prefix && num_prefixes < 1
-                    || tier.affix == Affix::Suffix && num_suffixes < 1
-            })
-            .cloned()
-            .collect()
-    }
-
     fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], _omens: &HashSet<OmenId>) {
         let tiers = TIERS.get().unwrap();
 
-        let candidate_tiers = self.possible_tiers(item, candidate_tiers);
+        let mut candidate_tiers: Box<dyn Iterator<Item = &TierId>> =
+            Box::new(candidate_tiers.iter());
 
+        if item.num_prefixes() == 1 {
+            // Filter out prefixes
+            candidate_tiers = Box::new(filter_affix(candidate_tiers, Affix::Suffix))
+        }
+        if item.num_suffixes() == 1 {
+            // Filter out suffixes
+            candidate_tiers = Box::new(filter_affix(candidate_tiers, Affix::Prefix))
+        }
+
+        let candidate_tiers = candidate_tiers.collect::<Vec<_>>();
+
+        // Roll a mod
         let weights = candidate_tiers
             .iter()
-            .map(|tier_id| tiers[tier_id].weight as f32)
+            .map(|tier_id| tiers[*tier_id].weight as f32)
             .collect::<Vec<_>>();
 
-        let choice = random_choice().random_choice_f32(&candidate_tiers, &weights, 1)[0];
+        let choice = *random_choice().random_choice_f32(&candidate_tiers, &weights, 1)[0];
 
         item.mods.push(choice.clone());
     }
@@ -135,10 +109,6 @@ impl Currency for Regal {
         _omens: &HashSet<OmenId>,
     ) -> bool {
         item.rarity == Rarity::Magic
-    }
-
-    fn possible_tiers(&self, item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId> {
-        Exalt.possible_tiers(item, candidate_tiers)
     }
 
     fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
@@ -162,7 +132,6 @@ impl Currency for Exalt {
         item.rarity == Rarity::Rare && item.mods.len() < 6 && {
             // Omens
             let tiers = TIERS.get().unwrap();
-            let mods = MODS.get().unwrap();
 
             let mut candidate_tiers: Box<dyn Iterator<Item = &TierId>> =
                 Box::new(candidate_tiers.iter());
@@ -183,7 +152,7 @@ impl Currency for Exalt {
 
             // Filter out based on current item state
             let candidate_tiers =
-                self.possible_tiers(item, &candidate_tiers.cloned().collect::<Vec<_>>());
+                self.filter_slammable(item, &candidate_tiers.cloned().collect::<Vec<_>>());
             if candidate_tiers.is_empty() {
                 return false;
             }
@@ -215,23 +184,6 @@ impl Currency for Exalt {
         }
     }
 
-    fn possible_tiers(&self, item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId> {
-        let mut candidate_tiers: Box<dyn Iterator<Item = &TierId>> =
-            Box::new(candidate_tiers.iter());
-
-        candidate_tiers = Box::new(filter_out_families(candidate_tiers, item.mod_familities()));
-
-        if item.num_prefixes() == 3 {
-            candidate_tiers = Box::new(filter_affix(candidate_tiers, Affix::Suffix));
-        }
-
-        if item.num_suffixes() == 3 {
-            candidate_tiers = Box::new(filter_affix(candidate_tiers, Affix::Prefix));
-        }
-
-        candidate_tiers.cloned().collect()
-    }
-
     fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
         let tiers = TIERS.get().unwrap();
 
@@ -249,8 +201,7 @@ impl Currency for Exalt {
         }
         if omens.contains("Homogenising") {
             // filter tags
-            let existing_tags = item.mod_tags();
-            candidate_tiers = Box::new(filter_tags(candidate_tiers, existing_tags));
+            candidate_tiers = Box::new(filter_tags(candidate_tiers, item.mod_tags()));
         }
 
         let candidate_tiers = candidate_tiers.cloned().collect::<Vec<_>>();
@@ -258,7 +209,7 @@ impl Currency for Exalt {
         // TODO: Check validity of 2nd slam
         let num_slams = if omens.contains("Greater") { 2 } else { 1 };
         for _ in 0..num_slams {
-            let candidate_tiers = self.possible_tiers(item, &candidate_tiers);
+            let candidate_tiers = self.filter_slammable(item, &candidate_tiers);
 
             let weights = candidate_tiers
                 .iter()
@@ -270,11 +221,30 @@ impl Currency for Exalt {
                 .first()
                 .unwrap_or_else(|| {
                     item.print_item();
-                    panic!("No canidates to slam!");
+                    panic!("No canidates to slam! omens: {:?}", omens);
                 });
 
             item.mods.push(choice.clone());
         }
+    }
+}
+
+impl Exalt {
+    fn filter_slammable(&self, item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId> {
+        let mut candidate_tiers: Box<dyn Iterator<Item = &TierId>> =
+            Box::new(candidate_tiers.iter());
+
+        candidate_tiers = Box::new(filter_out_families(candidate_tiers, item.mod_familities()));
+
+        if item.num_prefixes() == 3 {
+            candidate_tiers = Box::new(filter_affix(candidate_tiers, Affix::Suffix));
+        }
+
+        if item.num_suffixes() == 3 {
+            candidate_tiers = Box::new(filter_affix(candidate_tiers, Affix::Prefix));
+        }
+
+        candidate_tiers.cloned().collect()
     }
 }
 
@@ -313,11 +283,6 @@ impl Currency for Annulment {
 
             candidate_removes.count() >= num_removes
         }
-    }
-
-    fn possible_tiers(&self, _item: &ItemState, _candidate_tiers: &[TierId]) -> Vec<TierId> {
-        // TODO: Should this return the possible targets to remove?
-        vec![]
     }
 
     fn craft(&self, item: &mut ItemState, _candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
@@ -372,10 +337,6 @@ impl Currency for Alchemy {
         item.rarity == Rarity::Normal
     }
 
-    fn possible_tiers(&self, item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId> {
-        Exalt.possible_tiers(item, candidate_tiers)
-    }
-
     fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
         item.rarity = Rarity::Rare;
 
@@ -409,11 +370,6 @@ impl Currency for Chaos {
         item.rarity == Rarity::Rare && Annulment.can_be_used(item, candidate_tiers, omens)
     }
 
-    fn possible_tiers(&self, _item: &ItemState, _candidate_tiers: &[TierId]) -> Vec<TierId> {
-        // TODO: Need to account for the mod being removed
-        vec![]
-    }
-
     fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
         Annulment.craft(item, candidate_tiers, omens);
         Exalt.craft(item, candidate_tiers, &HashSet::new());
@@ -433,10 +389,6 @@ impl Currency for GreaterChaos {
         omens: &HashSet<OmenId>,
     ) -> bool {
         Chaos.can_be_used(item, candidate_tiers, omens)
-    }
-
-    fn possible_tiers(&self, _item: &ItemState, _candidate_tiers: &[TierId]) -> Vec<TierId> {
-        vec![]
     }
 
     fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
@@ -460,10 +412,6 @@ impl Currency for PerfectChaos {
         Chaos.can_be_used(item, candidate_tiers, omens)
     }
 
-    fn possible_tiers(&self, _item: &ItemState, _candidate_tiers: &[TierId]) -> Vec<TierId> {
-        vec![]
-    }
-
     fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
         let candidate_tiers = filter_perfect(candidate_tiers);
         Chaos.craft(item, &candidate_tiers, omens);
@@ -485,13 +433,8 @@ impl Currency for GreaterExalt {
         Exalt.can_be_used(item, candidate_tiers, omens)
     }
 
-    fn possible_tiers(&self, item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId> {
-        let candidate_tiers = Exalt.possible_tiers(item, candidate_tiers);
-        filter_greater(&candidate_tiers)
-    }
-
     fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
-        let candidate_tiers = self.possible_tiers(item, candidate_tiers);
+        let candidate_tiers = filter_greater(candidate_tiers);
         Exalt.craft(item, &candidate_tiers, omens);
     }
 }
@@ -511,13 +454,8 @@ impl Currency for PerfectExalt {
         Exalt.can_be_used(item, candidate_tiers, omens)
     }
 
-    fn possible_tiers(&self, item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId> {
-        let candidate_tiers = Exalt.possible_tiers(item, candidate_tiers);
-        filter_perfect(&candidate_tiers)
-    }
-
     fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
-        let candidate_tiers = self.possible_tiers(item, candidate_tiers);
+        let candidate_tiers = filter_perfect(candidate_tiers);
         Exalt.craft(item, &candidate_tiers, omens);
     }
 }
@@ -537,13 +475,8 @@ impl Currency for GreaterTransmute {
         Transmute.can_be_used(item, candidate_tiers, omens)
     }
 
-    fn possible_tiers(&self, item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId> {
-        let candidate_tiers = Transmute.possible_tiers(item, candidate_tiers);
-        filter_greater(&candidate_tiers)
-    }
-
     fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
-        let candidate_tiers = self.possible_tiers(item, candidate_tiers);
+        let candidate_tiers = filter_greater(candidate_tiers);
         Transmute.craft(item, &candidate_tiers, omens);
     }
 }
@@ -563,13 +496,8 @@ impl Currency for PerfectTransmute {
         Transmute.can_be_used(item, candidate_tiers, omens)
     }
 
-    fn possible_tiers(&self, item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId> {
-        let candidate_tiers = Transmute.possible_tiers(item, candidate_tiers);
-        filter_perfect(&candidate_tiers)
-    }
-
     fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
-        let candidate_tiers = self.possible_tiers(item, candidate_tiers);
+        let candidate_tiers = filter_perfect(candidate_tiers);
         Transmute.craft(item, &candidate_tiers, omens);
     }
 }
@@ -589,13 +517,8 @@ impl Currency for GreaterAugmentation {
         Augmentation.can_be_used(item, candidate_tiers, omens)
     }
 
-    fn possible_tiers(&self, item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId> {
-        let candidate_tiers = Augmentation.possible_tiers(item, candidate_tiers);
-        filter_greater(&candidate_tiers)
-    }
-
     fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
-        let candidate_tiers = self.possible_tiers(item, candidate_tiers);
+        let candidate_tiers = filter_greater(candidate_tiers);
         Augmentation.craft(item, &candidate_tiers, omens);
     }
 }
@@ -615,13 +538,8 @@ impl Currency for PerfectAugmentation {
         Augmentation.can_be_used(item, candidate_tiers, omens)
     }
 
-    fn possible_tiers(&self, item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId> {
-        let candidate_tiers = Augmentation.possible_tiers(item, candidate_tiers);
-        filter_perfect(&candidate_tiers)
-    }
-
     fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
-        let candidate_tiers = self.possible_tiers(item, candidate_tiers);
+        let candidate_tiers = filter_perfect(candidate_tiers);
         Augmentation.craft(item, &candidate_tiers, omens);
     }
 }
@@ -673,10 +591,6 @@ impl Currency for Essence {
             Affix::Suffix => item.num_suffixes() < 3,
             Affix::Corrupted => unreachable!(),
         }
-    }
-
-    fn possible_tiers(&self, item: &ItemState, _candidate_tiers: &[TierId]) -> Vec<TierId> {
-        vec![self.tiers[&item.base_type].clone()]
     }
 
     fn craft(&self, item: &mut ItemState, _candidate_tiers: &[TierId], _omens: &HashSet<OmenId>) {
@@ -746,10 +660,6 @@ impl Currency for PerfectEssence {
         }
 
         candidate_removes.count() > 0
-    }
-
-    fn possible_tiers(&self, item: &ItemState, _candidate_tiers: &[TierId]) -> Vec<TierId> {
-        vec![self.tiers[&item.base_type].clone()]
     }
 
     fn craft(&self, item: &mut ItemState, _candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
@@ -872,28 +782,6 @@ impl Currency for CurrencyType {
             }
             Self::Essence(essence) => essence.can_be_used(item, candidate_tiers, omens),
             Self::PerfectEssence(essence) => essence.can_be_used(item, candidate_tiers, omens),
-        }
-    }
-
-    fn possible_tiers(&self, item: &ItemState, candidate_tiers: &[TierId]) -> Vec<TierId> {
-        match self {
-            Self::Transmute => Transmute.possible_tiers(item, candidate_tiers),
-            Self::Augmentation => Augmentation.possible_tiers(item, candidate_tiers),
-            Self::Regal => Regal.possible_tiers(item, candidate_tiers),
-            Self::Exalt => Exalt.possible_tiers(item, candidate_tiers),
-            Self::Annulment => Annulment.possible_tiers(item, candidate_tiers),
-            Self::Alchemy => Alchemy.possible_tiers(item, candidate_tiers),
-            Self::Chaos => Chaos.possible_tiers(item, candidate_tiers),
-            Self::GreaterChaos => GreaterChaos.possible_tiers(item, candidate_tiers),
-            Self::PerfectChaos => PerfectChaos.possible_tiers(item, candidate_tiers),
-            Self::GreaterExalt => GreaterExalt.possible_tiers(item, candidate_tiers),
-            Self::PerfectExalt => PerfectExalt.possible_tiers(item, candidate_tiers),
-            Self::GreaterTransmute => GreaterTransmute.possible_tiers(item, candidate_tiers),
-            Self::PerfectTransmute => PerfectTransmute.possible_tiers(item, candidate_tiers),
-            Self::GreaterAugmentation => GreaterAugmentation.possible_tiers(item, candidate_tiers),
-            Self::PerfectAugmentation => PerfectAugmentation.possible_tiers(item, candidate_tiers),
-            Self::Essence(essence) => essence.possible_tiers(item, candidate_tiers),
-            Self::PerfectEssence(essence) => essence.possible_tiers(item, candidate_tiers),
         }
     }
 

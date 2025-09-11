@@ -214,3 +214,5 @@ impl Condition {
 /// Formatters for stats, the first matching formatter is used.
 /// LUT key is "|" delimited StatID's
 pub type StatFormatters = HashMap<String, Vec<StatFormatter>>;
+
+pub type OmenId = String;

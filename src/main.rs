@@ -10,7 +10,7 @@ use poe_crafting::{
     item_state::{ItemState, Rarity, get_valid_mods_for_item},
     parser_dat::{load_mod_families, load_mod_groups, load_mod_tiers, load_stat_ids},
     parser_poe2db, parser_stat_desc,
-    types::{BaseItemId, StatFormatters, TierId},
+    types::StatFormatters,
 };
 use random_choice::random_choice;
 
