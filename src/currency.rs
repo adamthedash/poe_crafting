@@ -105,10 +105,15 @@ impl Currency for Regal {
     fn can_be_used(
         &self,
         item: &ItemState,
-        _candidate_tiers: &[TierId],
-        _omens: &HashSet<OmenId>,
+        candidate_tiers: &[TierId],
+        omens: &HashSet<OmenId>,
     ) -> bool {
-        item.rarity == Rarity::Magic
+        item.rarity == Rarity::Magic && {
+            // TODO: see if we can do this check without copying
+            let mut item = item.clone();
+            item.rarity = Rarity::Rare;
+            Exalt.can_be_used(&item, candidate_tiers, omens)
+        }
     }
 
     fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
@@ -147,7 +152,10 @@ impl Currency for Exalt {
             if omens.contains("Homogenising") {
                 // filter tags
                 let existing_tags = item.mod_tags();
-                candidate_tiers = Box::new(filter_tags(candidate_tiers, existing_tags));
+                // If there are no tags, homogenizing has no effect
+                if !existing_tags.is_empty() {
+                    candidate_tiers = Box::new(filter_tags(candidate_tiers, existing_tags));
+                }
             }
 
             // Filter out based on current item state
@@ -158,16 +166,16 @@ impl Currency for Exalt {
             }
 
             // Which affixes can be slammed
-            let unique_affixes = candidate_tiers
-                .iter()
-                .map(|tier_id| {
-                    let tier = &tiers[tier_id];
-
-                    tier.affix
-                })
-                .collect::<HashSet<_>>();
-
             if omens.contains("Greater") {
+                let unique_affixes = candidate_tiers
+                    .iter()
+                    .map(|tier_id| {
+                        let tier = &tiers[tier_id];
+
+                        tier.affix
+                    })
+                    .collect::<HashSet<_>>();
+
                 if unique_affixes.len() == 1 {
                     if unique_affixes.contains(&Affix::Suffix) {
                         item.num_suffixes() <= 1
@@ -201,7 +209,11 @@ impl Currency for Exalt {
         }
         if omens.contains("Homogenising") {
             // filter tags
-            candidate_tiers = Box::new(filter_tags(candidate_tiers, item.mod_tags()));
+            let existing_tags = item.mod_tags();
+            // If there are no tags, homogenizing has no effect
+            if !existing_tags.is_empty() {
+                candidate_tiers = Box::new(filter_tags(candidate_tiers, existing_tags));
+            }
         }
 
         let candidate_tiers = candidate_tiers.cloned().collect::<Vec<_>>();
@@ -221,7 +233,11 @@ impl Currency for Exalt {
                 .first()
                 .unwrap_or_else(|| {
                     item.print_item();
-                    panic!("No canidates to slam! omens: {:?}", omens);
+                    panic!(
+                        "No canidates to slam! omens: {:?}, {:?}",
+                        omens,
+                        std::any::type_name::<Self>()
+                    );
                 });
 
             item.mods.push(choice.clone());
@@ -813,7 +829,7 @@ impl CurrencyType {
     pub fn possible_omens(&self) -> HashSet<OmenId> {
         use CurrencyType::*;
         let omens = match self {
-            Regal => vec!["Sinistral", "Dextral", "Homogenising"],
+            Regal => vec!["Homogenising"],
             Annulment => vec!["Sinistral", "Dextral", "Greater"],
             Alchemy | PerfectEssence(_) => vec!["Sinistral", "Dextral"],
             Chaos | GreaterChaos | PerfectChaos => vec!["Sinistral", "Dextral", "Whittling"],

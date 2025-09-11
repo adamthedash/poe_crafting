@@ -1,12 +1,13 @@
+#![allow(non_snake_case)]
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashMap,
     path::Path,
 };
 
 use serde::{Deserialize, Deserializer};
 use serde_with::serde_as;
 
-use crate::types::{Affix, ModFamily, ModGroup, ModType, Modifier, StatID, Tier, TierId};
+use crate::types::{Affix, ModFamily, ModGroup, ModTag, ModType, Modifier, StatID, Tier, TierId};
 
 fn deserialize_json_array_u32<'de, D>(deserializer: D) -> Result<Vec<u32>, D::Error>
 where
@@ -35,6 +36,9 @@ pub struct ModRecord {
 
     #[serde(deserialize_with = "deserialize_json_array_u32")]
     pub Families: Vec<u32>,
+    // Mod Tags
+    #[serde(deserialize_with = "deserialize_json_array_u32")]
+    pub ImplicitTags: Vec<u32>,
     /// Affix
     pub GenerationType: u32,
     /// Min ilvl
@@ -85,6 +89,12 @@ pub struct ItemClassRecord {
     pub Id: String,
 }
 
+#[derive(Deserialize)]
+pub struct TagsRecord {
+    pub Id: String,
+    pub DisplayString: Option<String>,
+}
+
 pub fn load_mod_groups(path: &Path) -> Vec<ModGroup> {
     csv::Reader::from_path(path)
         .unwrap()
@@ -108,11 +118,24 @@ pub fn load_stat_ids(path: &Path) -> Vec<StatID> {
         .collect()
 }
 
+pub fn load_mod_tags(path: &Path) -> Vec<Option<ModTag>> {
+    csv::Reader::from_path(path)
+        .unwrap()
+        .deserialize::<TagsRecord>()
+        .map(|row| {
+            let row = row.unwrap();
+            // Only load tags which are displayable
+            row.DisplayString.map(|_| row.Id)
+        })
+        .collect()
+}
+
 pub fn load_mod_tiers(
     path: &Path,
     stat_ids: &[StatID],
     mod_groups: &[ModGroup],
     mod_familites: &[ModFamily],
+    mod_tags: &[Option<ModTag>],
 ) -> (HashMap<TierId, Tier>, HashMap<ModGroup, Modifier>) {
     csv::Reader::from_path(path)
         .unwrap()
@@ -157,10 +180,15 @@ pub fn load_mod_tiers(
                     _ => Affix::Corrupted,
                 };
 
+                let tags = row
+                    .ImplicitTags
+                    .iter()
+                    .flat_map(|index| mod_tags[*index as usize].clone())
+                    .collect();
+
                 let modifier = Modifier {
                     group: mod_group.clone(),
-                    // TODO: tags
-                    tags: HashSet::new(),
+                    tags,
                     // TODO: mod type
                     mod_type: ModType::Normal,
                     stats,

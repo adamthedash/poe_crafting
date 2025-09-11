@@ -1,3 +1,4 @@
+#![allow(non_snake_case)]
 /**
 Parser for Craft of Exile's mod data JSON
 https://github.com/krakenbul/coe2weights

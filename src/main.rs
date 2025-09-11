@@ -3,12 +3,13 @@ use std::{
     path::Path,
 };
 
-use itertools::Itertools;
 use poe_crafting::{
     FORMATTERS, ITEM_TIERS, MODS, TIERS,
     currency::{CURRENCIES, Currency},
     item_state::{ItemState, Rarity, get_valid_mods_for_item},
-    parser_dat::{load_mod_families, load_mod_groups, load_mod_tiers, load_stat_ids},
+    parser_dat::{
+        load_mod_families, load_mod_groups, load_mod_tags, load_mod_tiers, load_stat_ids,
+    },
     parser_poe2db, parser_stat_desc,
     types::StatFormatters,
 };
@@ -49,10 +50,8 @@ fn init() {
 
     // Load mod groups from dat files
     let mod_groups = load_mod_groups(&poe2_dat_root.join("data/modtype.csv"));
-
     let mod_families = load_mod_families(&poe2_dat_root.join("data/modfamily.csv"));
-
-    // Load stat IDs from dat files
+    let mod_tags = load_mod_tags(&poe2_dat_root.join("data/tags.csv"));
     let stat_ids = load_stat_ids(&poe2_dat_root.join("data/stats.csv"));
 
     // Load ModGroup -> [Tier] LUT from dat files
@@ -62,6 +61,7 @@ fn init() {
         &stat_ids,
         &mod_groups,
         &mod_families,
+        &mod_tags,
     );
     MODS.set(mod_stats).unwrap();
 
@@ -123,8 +123,6 @@ fn main() {
             let omens = currency
                 .possible_omens()
                 .into_iter()
-                // Filter out non-implemented
-                .filter(|omen| !["Homogenising".to_string()].contains(omen))
                 // Only omens that can be used
                 .filter(|omen| {
                     currency.can_be_used(
@@ -142,6 +140,7 @@ fn main() {
                     .map(|o| (*o).clone()),
             );
 
+            // println!("{:?} {:?}", omens, currency);
             let before = item.clone();
             currency.craft(&mut item, &candidate_tiers, &omens);
             if !item.is_valid() {
@@ -153,7 +152,7 @@ fn main() {
             }
         }
 
-        // item.print_item();
-        // println!();
+        item.print_item();
+        println!();
     }
 }
