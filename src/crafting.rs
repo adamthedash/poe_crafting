@@ -5,7 +5,7 @@ use random_choice::random_choice;
 
 use crate::{
     MODS, TIERS,
-    types::{Affix, ModTag, TierId},
+    types::{Affix, ModFamily, TierId},
 };
 
 /// Randomly roll a mod from the given pool
@@ -77,37 +77,35 @@ fn filter_better_currency(candidate_tiers: &[TierId], min_ilvl: u32) -> Vec<Tier
 }
 
 /// For Sinistral/Dextral Omens
-fn filter_affix(candidate_mods: &[TierId], affix: Affix) -> Vec<TierId> {
+pub fn filter_affix<'a, I: Iterator<Item = &'a TierId>>(
+    candidate_mods: I,
+    affix: Affix,
+) -> impl Iterator<Item = &'a TierId> {
     let tiers = TIERS.get().unwrap();
     let mods = MODS.get().unwrap();
 
-    candidate_mods
-        .iter()
-        .filter(|tier_id| {
-            let tier = &tiers[*tier_id];
-            let modifier = &mods[&tier.mod_id];
+    candidate_mods.filter(move |tier_id| {
+        let tier = &tiers[*tier_id];
+        let modifier = &mods[&tier.mod_id];
 
-            modifier.affix == affix
-        })
-        .cloned()
-        .collect()
+        modifier.affix == affix
+    })
 }
 
 /// For Homogenising Omen
-fn filter_tags(candidate_mods: &[TierId], tags: HashSet<ModTag>) -> Vec<TierId> {
+pub fn filter_tags<'a, I: Iterator<Item = &'a TierId>>(
+    candidate_mods: I,
+    tags: HashSet<TierId>,
+) -> impl Iterator<Item = &'a TierId> {
     let tiers = TIERS.get().unwrap();
     let mods = MODS.get().unwrap();
 
-    candidate_mods
-        .iter()
-        .filter(|tier_id| {
-            let tier = &tiers[*tier_id];
-            let modifier = &mods[&tier.mod_id];
+    candidate_mods.filter(move |tier_id| {
+        let tier = &tiers[*tier_id];
+        let modifier = &mods[&tier.mod_id];
 
-            modifier.tags.iter().any(|tag| tags.contains(tag))
-        })
-        .cloned()
-        .collect()
+        !modifier.tags.is_disjoint(&tags)
+    })
 }
 
 /// For Whittling Omen
@@ -117,4 +115,20 @@ fn filter_lowest_tier(candidate_mods: &[TierId]) -> Vec<TierId> {
 
     // TODO: Need base-specific tiers
     todo!()
+}
+
+/// Removes tiers which conflict with the given families
+pub fn filter_out_families<'a, I: Iterator<Item = &'a TierId>>(
+    candidate_mods: I,
+    families: HashSet<ModFamily>,
+) -> impl Iterator<Item = &'a TierId> {
+    let mods = MODS.get().unwrap();
+    let tiers = TIERS.get().unwrap();
+
+    candidate_mods.filter(move |tier_id| {
+        let tier = &tiers[*tier_id];
+        let modifier = &mods[&tier.mod_id];
+
+        !families.contains(&modifier.family)
+    })
 }

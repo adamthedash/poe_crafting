@@ -5,7 +5,6 @@ use crate::types::{ItemMods, ModGroup, Modifier, StatFormatters, Tier, TierId};
 pub mod crafting;
 pub mod currency;
 pub mod item_state;
-pub mod omen;
 pub mod parser_coe;
 pub mod parser_dat;
 pub mod parser_poe2db;

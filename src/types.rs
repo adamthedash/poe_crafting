@@ -1,15 +1,12 @@
 /**
 *   All the data in a standardised format I want
 */
-use std::{
-    collections::{HashMap, HashSet},
-    fmt,
-};
+use std::collections::{HashMap, HashSet};
 
 use regex::Regex;
 use serde::Deserialize;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum Affix {
     Prefix,
     Suffix,

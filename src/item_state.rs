@@ -1,9 +1,10 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 use crate::{
     FORMATTERS, ITEM_TIERS, MODS, TIERS,
     types::{
-        Affix, BaseItemId, ModGroup, Modifier, StatFormatters, Tier, TierId, get_matching_formatter,
+        Affix, BaseItemId, ModFamily, ModTag, TierId,
+        get_matching_formatter,
     },
 };
 
@@ -39,6 +40,39 @@ impl ItemState {
             .iter()
             .filter(|tier_id| mods[&tiers[*tier_id].mod_id].affix == Affix::Suffix)
             .count()
+    }
+
+    /// Set of unique mod tags
+    pub fn mod_tags(&self) -> HashSet<ModTag> {
+        let tiers = TIERS.get().unwrap();
+        let mods = MODS.get().unwrap();
+
+        self.mods
+            .iter()
+            .fold(HashSet::new(), |mut all_tags, tier_id| {
+                let tier = &tiers[tier_id];
+                let modifier = &mods[&tier.mod_id];
+
+                all_tags.extend(modifier.tags.iter().cloned());
+
+                all_tags
+            })
+    }
+
+    /// Mod familities for each tier
+    pub fn mod_familities(&self) -> HashSet<ModFamily> {
+        let tiers = TIERS.get().unwrap();
+        let mods = MODS.get().unwrap();
+
+        self.mods
+            .iter()
+            .map(|tier_id| {
+                let tier = &tiers[tier_id];
+                let modifier = &mods[&tier.mod_id];
+                &modifier.family
+            })
+            .cloned()
+            .collect()
     }
 
     pub fn print_item(&self) {
