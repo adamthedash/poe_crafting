@@ -97,10 +97,9 @@ impl Currency for Augmentation {
             .iter()
             .filter(|tier_id| {
                 let tier = &tiers[*tier_id];
-                let modifier = &mods[&tier.mod_id];
 
-                modifier.affix == Affix::Prefix && num_prefixes < 1
-                    || modifier.affix == Affix::Suffix && num_suffixes < 1
+                tier.affix == Affix::Prefix && num_prefixes < 1
+                    || tier.affix == Affix::Suffix && num_suffixes < 1
             })
             .cloned()
             .collect()
@@ -193,9 +192,8 @@ impl Currency for Exalt {
                 .iter()
                 .map(|tier_id| {
                     let tier = &tiers[tier_id];
-                    let modifier = &mods[&tier.mod_id];
 
-                    modifier.affix
+                    tier.affix
                 })
                 .collect::<HashSet<_>>();
 
@@ -671,7 +669,7 @@ impl Currency for Essence {
         }
 
         // Must have space for the new mod
-        match new_mod.affix {
+        match new_tier.affix {
             Affix::Prefix => item.num_prefixes() < 3,
             Affix::Suffix => item.num_suffixes() < 3,
             Affix::Corrupted => unreachable!(),
@@ -728,14 +726,14 @@ impl Currency for PerfectEssence {
         // If there's not enough space for the mod, remove a mod with the same affix
         // Otherwise, remove a random mod
         let mut candidate_removes: Box<dyn Iterator<Item = &TierId>> = Box::new(item.mods.iter());
-        let has_space = match new_mod.affix {
+        let has_space = match new_tier.affix {
             Affix::Prefix => item.num_prefixes() < 3,
             Affix::Suffix => item.num_suffixes() < 3,
             Affix::Corrupted => unreachable!(),
         };
         if !has_space {
             // filter same affix as essence adds
-            candidate_removes = Box::new(filter_affix(candidate_removes, new_mod.affix));
+            candidate_removes = Box::new(filter_affix(candidate_removes, new_tier.affix));
         }
 
         // Apply omens
@@ -766,14 +764,14 @@ impl Currency for PerfectEssence {
         // If there's not enough space for the mod, remove a mod with the same affix
         // Otherwise, remove a random mod
         let mut candidate_removes: Box<dyn Iterator<Item = &TierId>> = Box::new(item.mods.iter());
-        let has_space = match new_mod.affix {
+        let has_space = match new_tier.affix {
             Affix::Prefix => item.num_prefixes() < 3,
             Affix::Suffix => item.num_suffixes() < 3,
             Affix::Corrupted => unreachable!(),
         };
         if !has_space {
             // filter same affix as essence adds
-            candidate_removes = Box::new(filter_affix(candidate_removes, new_mod.affix));
+            candidate_removes = Box::new(filter_affix(candidate_removes, new_tier.affix));
         }
 
         // Apply omens

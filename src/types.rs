@@ -34,8 +34,6 @@ pub struct Modifier {
     pub group: ModGroup,
     /// Eg. Fire, Attack
     pub tags: HashSet<ModTag>,
-    /// Where this mod rolls
-    pub affix: Affix,
     pub mod_type: ModType,
     /// The individual stats provided by this mod Eg. 2 for hybrid attack/accuracy
     pub stats: Vec<StatID>,
@@ -54,6 +52,8 @@ pub struct Tier {
     pub name: String,
     /// Link to parent modifier
     pub mod_id: ModGroup,
+    /// Where this mod rolls
+    pub affix: Affix,
     /// Minimum required ilvl
     pub ilvl: u32,
     /// One range for each stat provided by this mod
