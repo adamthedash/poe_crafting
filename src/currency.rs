@@ -239,7 +239,6 @@ impl Currency for Exalt {
 
     fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
         let tiers = TIERS.get().unwrap();
-        let mods = MODS.get().unwrap();
 
         let mut candidate_tiers: Box<dyn Iterator<Item = &TierId>> =
             Box::new(candidate_tiers.iter());
@@ -298,30 +297,17 @@ impl Currency for Annulment {
     ) -> bool {
         !item.mods.is_empty() && {
             // Omens
-            let tiers = TIERS.get().unwrap();
-            let mods = MODS.get().unwrap();
-
-            let mut candidate_removes: Box<dyn Iterator<Item = usize>> =
-                Box::new(0..item.mods.len());
+            let mut candidate_removes: Box<dyn Iterator<Item = &TierId>> =
+                Box::new(item.mods.iter());
 
             // Apply omens
             if omens.contains("Dextral") {
                 // filter suffixes
-                candidate_removes = Box::new(candidate_removes.filter(|index| {
-                    let tier_id = &item.mods[*index];
-                    let tier = &tiers[tier_id];
-                    let modifier = &mods[&tier.mod_id];
-                    modifier.affix == Affix::Suffix
-                }));
+                candidate_removes = Box::new(filter_affix(candidate_removes, Affix::Suffix));
             }
             if omens.contains("Sinistral") {
                 // filter prefixes
-                candidate_removes = Box::new(candidate_removes.filter(|index| {
-                    let tier_id = &item.mods[*index];
-                    let tier = &tiers[tier_id];
-                    let modifier = &mods[&tier.mod_id];
-                    modifier.affix == Affix::Prefix
-                }));
+                candidate_removes = Box::new(filter_affix(candidate_removes, Affix::Prefix));
             }
             // For chaos orb
             if omens.contains("Whittling") {
@@ -341,29 +327,17 @@ impl Currency for Annulment {
     }
 
     fn craft(&self, item: &mut ItemState, _candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
-        let tiers = TIERS.get().unwrap();
-        let mods = MODS.get().unwrap();
-
-        let mut candidate_removes: Box<dyn Iterator<Item = usize>> = Box::new(0..item.mods.len());
+        // Omens
+        let mut candidate_removes: Box<dyn Iterator<Item = &TierId>> = Box::new(item.mods.iter());
 
         // Apply omens
         if omens.contains("Dextral") {
             // filter suffixes
-            candidate_removes = Box::new(candidate_removes.filter(|index| {
-                let tier_id = &item.mods[*index];
-                let tier = &tiers[tier_id];
-                let modifier = &mods[&tier.mod_id];
-                modifier.affix == Affix::Suffix
-            }));
+            candidate_removes = Box::new(filter_affix(candidate_removes, Affix::Suffix));
         }
         if omens.contains("Sinistral") {
             // filter prefixes
-            candidate_removes = Box::new(candidate_removes.filter(|index| {
-                let tier_id = &item.mods[*index];
-                let tier = &tiers[tier_id];
-                let modifier = &mods[&tier.mod_id];
-                modifier.affix == Affix::Prefix
-            }));
+            candidate_removes = Box::new(filter_affix(candidate_removes, Affix::Prefix));
         }
         // For chaos orb
         if omens.contains("Whittling") {
@@ -372,25 +346,20 @@ impl Currency for Annulment {
             todo!()
         }
 
-        let mut candidate_removes = candidate_removes.collect::<Vec<_>>();
+        let mut candidate_removes = candidate_removes.cloned().collect::<Vec<_>>();
 
         // TODO: Check validity of 2nd remove
         let num_removes = if omens.contains("Greater") { 2 } else { 1 };
         for _ in 0..num_removes {
             let weights = vec![1.; candidate_removes.len()];
-            let to_remove = **random_choice()
+            let to_remove = (*random_choice()
                 .random_choice_f32(&candidate_removes, &weights, 1)
                 .first()
-                .expect("No candidates to remove!");
+                .expect("No candidates to remove!"))
+            .clone();
 
-            item.mods.remove(to_remove);
-            candidate_removes.retain(|index| index != &to_remove);
-            // Shift down after removing
-            candidate_removes.iter_mut().for_each(|index| {
-                if *index >= to_remove {
-                    *index -= 1
-                }
-            });
+            item.mods.retain(|tier_id| *tier_id != to_remove);
+            candidate_removes.retain(|tier_id| *tier_id != to_remove);
         }
     }
 }
@@ -755,57 +724,35 @@ impl Currency for PerfectEssence {
         let new_mod = &mods[&new_tier.mod_id];
 
         // Must not have a mod of the same family already
-        if item.mods.iter().any(|tier_id| {
-            let tier = &tiers[tier_id];
-            let modifier = &mods[&tier.mod_id];
-            modifier.family == new_mod.family
-        }) {
+        if item.mod_familities().contains(&new_mod.family) {
             return false;
         }
 
         // Must have room for it
         // If there's not enough space for the mod, remove a mod with the same affix
         // Otherwise, remove a random mod
-        let mut candidate_removes: Box<dyn Iterator<Item = usize>> = Box::new(0..item.mods.len());
-
+        let mut candidate_removes: Box<dyn Iterator<Item = &TierId>> = Box::new(item.mods.iter());
         let has_space = match new_mod.affix {
             Affix::Prefix => item.num_prefixes() < 3,
             Affix::Suffix => item.num_suffixes() < 3,
             Affix::Corrupted => unreachable!(),
         };
         if !has_space {
-            candidate_removes = Box::new(candidate_removes.filter(|index| {
-                let tier_id = &item.mods[*index];
-                let tier = &tiers[tier_id];
-                let modifier = &mods[&tier.mod_id];
-                modifier.affix == new_mod.affix
-            }));
+            // filter same affix as essence adds
+            candidate_removes = Box::new(filter_affix(candidate_removes, new_mod.affix));
         }
+
         // Apply omens
         if omens.contains("Dextral") {
             // filter suffixes
-            candidate_removes = Box::new(candidate_removes.filter(|index| {
-                let tier_id = &item.mods[*index];
-                let tier = &tiers[tier_id];
-                let modifier = &mods[&tier.mod_id];
-                modifier.affix == Affix::Suffix
-            }));
+            candidate_removes = Box::new(filter_affix(candidate_removes, Affix::Suffix));
         }
         if omens.contains("Sinistral") {
             // filter prefixes
-            candidate_removes = Box::new(candidate_removes.filter(|index| {
-                let tier_id = &item.mods[*index];
-                let tier = &tiers[tier_id];
-                let modifier = &mods[&tier.mod_id];
-                modifier.affix == Affix::Prefix
-            }));
+            candidate_removes = Box::new(filter_affix(candidate_removes, Affix::Prefix));
         }
 
-        if candidate_removes.count() == 0 {
-            return false;
-        }
-
-        true
+        candidate_removes.count() > 0
     }
 
     fn possible_tiers(&self, item: &ItemState, _candidate_tiers: &[TierId]) -> Vec<TierId> {
@@ -820,51 +767,40 @@ impl Currency for PerfectEssence {
         let new_tier = &tiers[new_tier_id];
         let new_mod = &mods[&new_tier.mod_id];
 
+        // If there's not enough space for the mod, remove a mod with the same affix
+        // Otherwise, remove a random mod
+        let mut candidate_removes: Box<dyn Iterator<Item = &TierId>> = Box::new(item.mods.iter());
         let has_space = match new_mod.affix {
             Affix::Prefix => item.num_prefixes() < 3,
             Affix::Suffix => item.num_suffixes() < 3,
             Affix::Corrupted => unreachable!(),
         };
-
-        // If there's not enough space for the mod, remove a mod with the same affix
-        // Otherwise, remove a random mod
-        let mut candidate_removes: Box<dyn Iterator<Item = usize>> = Box::new(0..item.mods.len());
         if !has_space {
-            candidate_removes = Box::new(candidate_removes.filter(|index| {
-                let tier_id = &item.mods[*index];
-                let tier = &tiers[tier_id];
-                let modifier = &mods[&tier.mod_id];
-                modifier.affix == new_mod.affix
-            }));
+            // filter same affix as essence adds
+            candidate_removes = Box::new(filter_affix(candidate_removes, new_mod.affix));
         }
+
         // Apply omens
         if omens.contains("Dextral") {
             // filter suffixes
-            candidate_removes = Box::new(candidate_removes.filter(|index| {
-                let tier_id = &item.mods[*index];
-                let tier = &tiers[tier_id];
-                let modifier = &mods[&tier.mod_id];
-                modifier.affix == Affix::Suffix
-            }));
+            candidate_removes = Box::new(filter_affix(candidate_removes, Affix::Suffix));
         }
         if omens.contains("Sinistral") {
             // filter prefixes
-            candidate_removes = Box::new(candidate_removes.filter(|index| {
-                let tier_id = &item.mods[*index];
-                let tier = &tiers[tier_id];
-                let modifier = &mods[&tier.mod_id];
-                modifier.affix == Affix::Prefix
-            }));
+            candidate_removes = Box::new(filter_affix(candidate_removes, Affix::Prefix));
         }
 
         let candidate_removes = candidate_removes.collect::<Vec<_>>();
+
+        // Remove a mod
         let weights = vec![1.; candidate_removes.len()];
-        let to_remove = **random_choice()
+        let to_remove = (**random_choice()
             .random_choice_f32(&candidate_removes, &weights, 1)
             .first()
-            .expect("No candidates to remove!");
+            .expect("No candidates to remove!"))
+        .clone();
 
-        item.mods.remove(to_remove);
+        item.mods.retain(|tier_id| *tier_id != to_remove);
 
         // Add on the new mod
         item.mods.push(new_tier_id.clone());
