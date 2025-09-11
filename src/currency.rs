@@ -4,7 +4,8 @@ use std::sync::LazyLock;
 use random_choice::random_choice;
 
 use crate::crafting::{
-    filter_affix, filter_greater, filter_out_families, filter_perfect, filter_tags,
+    filter_affix, filter_greater, filter_lowest_tier, filter_out_families, filter_perfect,
+    filter_tags,
 };
 use crate::types::{Affix, BaseItemId};
 use crate::{
@@ -306,8 +307,7 @@ impl Currency for Annulment {
             // For chaos orb
             if omens.contains("Whittling") {
                 // filter lowest tier
-                // TODO: Need base-specific tiers
-                todo!()
+                candidate_removes = Box::new(filter_lowest_tier(candidate_removes));
             }
             let num_removes = if omens.contains("Greater") { 2 } else { 1 };
 
@@ -336,8 +336,7 @@ impl Currency for Annulment {
         // For chaos orb
         if omens.contains("Whittling") {
             // filter lowest tier
-            // TODO: Need base-specific tiers
-            todo!()
+            candidate_removes = Box::new(filter_lowest_tier(candidate_removes));
         }
 
         let mut candidate_removes = candidate_removes.cloned().collect::<Vec<_>>();

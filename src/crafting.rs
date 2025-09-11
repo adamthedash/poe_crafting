@@ -82,13 +82,11 @@ pub fn filter_affix<'a, I: Iterator<Item = &'a TierId>>(
     affix: Affix,
 ) -> impl Iterator<Item = &'a TierId> {
     let tiers = TIERS.get().unwrap();
-    let mods = MODS.get().unwrap();
 
     candidate_mods.filter(move |tier_id| {
         let tier = &tiers[*tier_id];
-        let modifier = &mods[&tier.mod_id];
 
-        modifier.affix == affix
+        tier.affix == affix
     })
 }
 
@@ -109,12 +107,22 @@ pub fn filter_tags<'a, I: Iterator<Item = &'a TierId>>(
 }
 
 /// For Whittling Omen
-fn filter_lowest_tier(candidate_mods: &[TierId]) -> Vec<TierId> {
+pub fn filter_lowest_tier<'a, I: Iterator<Item = &'a TierId>>(
+    candidate_mods: I,
+) -> impl Iterator<Item = &'a TierId> {
     let tiers = TIERS.get().unwrap();
-    let mods = MODS.get().unwrap();
 
-    // TODO: Need base-specific tiers
-    todo!()
+    let candidate_mods = candidate_mods.collect::<Vec<_>>();
+    let min_ilvl = candidate_mods
+        .iter()
+        .map(|tier_id| tiers[*tier_id].ilvl)
+        .min()
+        // If candidate_mods is empty, this value doesn't matter anyway
+        .unwrap_or(0);
+
+    candidate_mods
+        .into_iter()
+        .filter(move |tier_id| tiers[*tier_id].ilvl == min_ilvl)
 }
 
 /// Removes tiers which conflict with the given families

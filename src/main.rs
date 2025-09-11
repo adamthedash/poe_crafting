@@ -10,7 +10,7 @@ use poe_crafting::{
     item_state::{ItemState, Rarity, get_valid_mods_for_item},
     parser_dat::{load_mod_families, load_mod_groups, load_mod_tiers, load_stat_ids},
     parser_poe2db, parser_stat_desc,
-    types::StatFormatters,
+    types::{BaseItemId, StatFormatters, TierId},
 };
 use random_choice::random_choice;
 
@@ -97,13 +97,10 @@ fn main() {
     let item_tiers = ITEM_TIERS.get().unwrap();
     let formatters = FORMATTERS.get().unwrap();
 
-    println!("{:?}", tiers["EvasionGrantsDeflection5"]);
-    panic!();
-
     let bases = item_tiers.keys().collect::<Vec<_>>();
     let weights = vec![1.; bases.len()];
 
-    for _ in 0..10 {
+    for _ in 0..100 {
         let base_type = random_choice().random_choice_f32(&bases, &weights, 1)[0];
         let mut item = ItemState {
             base_type: (*base_type).clone(),
@@ -113,7 +110,7 @@ fn main() {
         };
         let candidate_tiers = get_valid_mods_for_item(&item);
 
-        for _ in 0..1000 {
+        for _ in 0..100 {
             // Select a random currency
             let currencies = CURRENCIES
                 .iter()
@@ -127,9 +124,7 @@ fn main() {
                 .possible_omens()
                 .into_iter()
                 // Filter out non-implemented
-                .filter(|omen| {
-                    !["Whittling".to_string(), "Homogenising".to_string()].contains(omen)
-                })
+                .filter(|omen| !["Homogenising".to_string()].contains(omen))
                 // Only omens that can be used
                 .filter(|omen| {
                     currency.can_be_used(
@@ -158,7 +153,7 @@ fn main() {
             }
         }
 
-        item.print_item();
-        println!();
+        // item.print_item();
+        // println!();
     }
 }

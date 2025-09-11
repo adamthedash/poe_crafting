@@ -23,19 +23,17 @@ pub struct ItemState {
 impl ItemState {
     pub fn num_prefixes(&self) -> usize {
         let tiers = TIERS.get().unwrap();
-        let mods = MODS.get().unwrap();
         self.mods
             .iter()
-            .filter(|tier_id| mods[&tiers[*tier_id].mod_id].affix == Affix::Prefix)
+            .filter(|tier_id| tiers[*tier_id].affix == Affix::Prefix)
             .count()
     }
 
     pub fn num_suffixes(&self) -> usize {
         let tiers = TIERS.get().unwrap();
-        let mods = MODS.get().unwrap();
         self.mods
             .iter()
-            .filter(|tier_id| mods[&tiers[*tier_id].mod_id].affix == Affix::Suffix)
+            .filter(|tier_id| tiers[*tier_id].affix == Affix::Suffix)
             .count()
     }
 

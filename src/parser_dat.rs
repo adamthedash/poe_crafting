@@ -150,7 +150,6 @@ pub fn load_mod_tiers(
                 // TODO: Skip empty families?
                 let mod_family = &mod_familites[*row.Families.first().unwrap_or(&0) as usize];
 
-                println!("{:?} {:?}", row.Id, row.GenerationType);
                 let affix = match row.GenerationType {
                     1 => Affix::Prefix,
                     2 => Affix::Suffix,
@@ -162,7 +161,6 @@ pub fn load_mod_tiers(
                     group: mod_group.clone(),
                     // TODO: tags
                     tags: HashSet::new(),
-                    affix,
                     // TODO: mod type
                     mod_type: ModType::Normal,
                     stats,
@@ -183,6 +181,7 @@ pub fn load_mod_tiers(
                         mod_domain: row.Domain,
                         // TODO: this will be filled in afterwards
                         weight: 0,
+                        affix,
                     },
                 );
 
