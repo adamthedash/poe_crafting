@@ -2,21 +2,14 @@
 use std::{collections::HashMap, path::Path};
 
 use serde::{Deserialize, Deserializer, de::DeserializeOwned};
-use serde_with::serde_as;
 
-use crate::types::{Affix, ModFamily, ModGroup, ModTag, ModType, Modifier, StatID, Tier, TierId};
+use crate::types::{Affix, ModGroup, ModType, Modifier, StatID, Tier, TierId};
 
-fn deserialize_json_array_u32<'de, D>(deserializer: D) -> Result<Vec<u32>, D::Error>
+/// Deserialise any json-encoded value
+fn deserialize_json_encoded<'de, D, T>(deserializer: D) -> Result<T, D::Error>
 where
     D: Deserializer<'de>,
-{
-    let s = String::deserialize(deserializer)?;
-    serde_json::from_str(&s).map_err(serde::de::Error::custom)
-}
-
-fn deserialize_json_array_i32<'de, D>(deserializer: D) -> Result<[i32; 2], D::Error>
-where
-    D: Deserializer<'de>,
+    T: DeserializeOwned,
 {
     let s = String::deserialize(deserializer)?;
     serde_json::from_str(&s).map_err(serde::de::Error::custom)
@@ -26,7 +19,6 @@ where
 pub trait RecordLoader: DeserializeOwned {
     /// Load the provided CSV into a structured iterator
     fn load(path: &Path) -> impl Iterator<Item = Self> {
-        println!("{:?}", path);
         csv::Reader::from_path(path)
             .unwrap()
             .into_deserialize::<Self>()
@@ -36,20 +28,19 @@ pub trait RecordLoader: DeserializeOwned {
 
 impl<T: DeserializeOwned> RecordLoader for T {}
 
-#[serde_as]
 #[derive(Deserialize)]
 pub struct ModsRecord {
     /// Eg. Strength6
     pub Id: TierId,
     /// Index into ModType table
-    pub ModType: u32,
+    pub ModType: usize,
     pub Domain: u32,
 
-    #[serde(deserialize_with = "deserialize_json_array_u32")]
-    pub Families: Vec<u32>,
+    #[serde(deserialize_with = "deserialize_json_encoded")]
+    pub Families: Vec<usize>,
     // Mod Tags
-    #[serde(deserialize_with = "deserialize_json_array_u32")]
-    pub ImplicitTags: Vec<u32>,
+    #[serde(deserialize_with = "deserialize_json_encoded")]
+    pub ImplicitTags: Vec<usize>,
     /// Affix
     pub GenerationType: u32,
     /// Min ilvl
@@ -57,18 +48,18 @@ pub struct ModsRecord {
     /// Eg. of the Mongoose
     pub Name: String,
     /// Index into Stats table
-    pub Stat1: Option<u32>,
-    pub Stat2: Option<u32>,
-    pub Stat3: Option<u32>,
-    pub Stat4: Option<u32>,
+    pub Stat1: Option<usize>,
+    pub Stat2: Option<usize>,
+    pub Stat3: Option<usize>,
+    pub Stat4: Option<usize>,
     // /// Stat value ranges
-    #[serde(deserialize_with = "deserialize_json_array_i32")]
+    #[serde(deserialize_with = "deserialize_json_encoded")]
     pub Stat1Value: [i32; 2],
-    #[serde(deserialize_with = "deserialize_json_array_i32")]
+    #[serde(deserialize_with = "deserialize_json_encoded")]
     pub Stat2Value: [i32; 2],
-    #[serde(deserialize_with = "deserialize_json_array_i32")]
+    #[serde(deserialize_with = "deserialize_json_encoded")]
     pub Stat3Value: [i32; 2],
-    #[serde(deserialize_with = "deserialize_json_array_i32")]
+    #[serde(deserialize_with = "deserialize_json_encoded")]
     pub Stat4Value: [i32; 2],
 }
 
@@ -112,7 +103,7 @@ pub struct EssencesRecord {
 
 #[derive(Deserialize)]
 pub struct EssenceTargetItemCategoriesRecord {
-    #[serde(deserialize_with = "deserialize_json_array_u32")]
+    #[serde(deserialize_with = "deserialize_json_encoded")]
     ItemClasses: Vec<u32>,
 }
 
@@ -127,7 +118,7 @@ pub struct EssenceModsRecord {
     /// Eg. +# to Strength, Dexterity or Intelligence
     pub DisplayMod: Option<u32>,
     /// The possible outcome mods for multi-outcome essences
-    #[serde(deserialize_with = "deserialize_json_array_u32")]
+    #[serde(deserialize_with = "deserialize_json_encoded")]
     pub OutcomeMods: Vec<u32>,
 }
 
@@ -185,7 +176,7 @@ pub fn load_essence_mods(
     path: &Path,
     essence_names: &[String],
 ) -> HashMap<u32, HashMap<u32, Vec<u32>>> {
-    let mut essences = HashMap::new();
+    let essences = HashMap::new();
     EssenceModsRecord::load(path).for_each(|row| {
         // essencemods.Essence -> essences.BaseItemType -> baseitemtypes.Name
         let name = &essence_names[row.Essence as usize];
@@ -213,16 +204,16 @@ pub fn load_mod_tiers(dats: &Dats) -> (HashMap<TierId, Tier>, HashMap<ModGroup, 
             let mut value_ranges = vec![];
             for (stat_id, value_range) in stats_ranges {
                 if let Some(stat_id) = stat_id {
-                    let stat_id = &dats.stats[stat_id as usize].Id;
+                    let stat_id = &dats.stats[stat_id].Id;
                     stats.push(stat_id.clone());
                     value_ranges.push(value_range);
                 }
             }
 
-            let mod_group = &dats.mod_type[row.ModType as usize].Name;
+            let mod_group = &dats.mod_type[row.ModType].Name;
 
             // TODO: Skip empty families?
-            let mod_family = &dats.mod_family[*row.Families.first().unwrap_or(&0) as usize].Id;
+            let mod_family = &dats.mod_family[*row.Families.first().unwrap_or(&0)].Id;
 
             let affix = match row.GenerationType {
                 1 => Affix::Prefix,
@@ -234,7 +225,7 @@ pub fn load_mod_tiers(dats: &Dats) -> (HashMap<TierId, Tier>, HashMap<ModGroup, 
             let tags = row
                 .ImplicitTags
                 .iter()
-                .flat_map(|index| dats.tags[*index as usize].DisplayString.clone())
+                .flat_map(|index| dats.tags[*index].DisplayString.clone())
                 .collect();
 
             let modifier = Modifier {
