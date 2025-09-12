@@ -37,7 +37,7 @@ impl<T: DeserializeOwned> RecordLoader for T {}
 
 #[serde_as]
 #[derive(Deserialize)]
-pub struct ModRecord {
+pub struct ModsRecord {
     /// Eg. Strength6
     pub Id: TierId,
     /// Index into ModType table
@@ -95,7 +95,7 @@ pub struct BaseItemTypesRecord {
 }
 
 #[derive(Deserialize)]
-pub struct ItemClassRecord {
+pub struct ItemClassesRecord {
     pub Id: String,
 }
 
@@ -117,7 +117,7 @@ pub struct EssenceTargetItemCategoriesRecord {
 }
 
 #[derive(Deserialize)]
-pub struct EssenceModRecord {
+pub struct EssenceModsRecord {
     pub Essence: u32,
     pub TargetItemCategory: u32,
     pub Mod1: Option<u32>,
@@ -132,35 +132,34 @@ pub struct EssenceModRecord {
 }
 
 pub struct Dats {
-    pub mods: Vec<ModRecord>,
+    pub mods: Vec<ModsRecord>,
     pub mod_type: Vec<ModTypeRecord>,
     pub mod_family: Vec<ModFamilyRecord>,
     pub stats: Vec<StatRecord>,
     pub base_item_types: Vec<BaseItemTypesRecord>,
-    pub item_class: Vec<ItemClassRecord>,
+    pub item_classes: Vec<ItemClassesRecord>,
     pub tags: Vec<TagsRecord>,
     pub essences: Vec<EssencesRecord>,
     pub essence_target_item_categories: Vec<EssenceTargetItemCategoriesRecord>,
-    pub essence_mods: Vec<EssenceModRecord>,
+    pub essence_mods: Vec<EssenceModsRecord>,
 }
 
 impl Dats {
     pub fn load_tables(data_root: &Path) -> Self {
         Self {
-            mods: ModRecord::load(&data_root.join("TODO_PATH")).collect(),
-            mod_type: ModTypeRecord::load(&data_root.join("TODO_PATH")).collect(),
+            mods: ModsRecord::load(&data_root.join("data/mods.csv")).collect(),
+            mod_type: ModTypeRecord::load(&data_root.join("data/modtype.csv")).collect(),
             mod_family: ModFamilyRecord::load(&data_root.join("TODO_PATH")).collect(),
             stats: StatRecord::load(&data_root.join("TODO_PATH")).collect(),
-            base_item_types: BaseItemTypesRecord::load(&data_root.join("TODO_PATH"))
-                .collect(),
-            item_class: ItemClassRecord::load(&data_root.join("TODO_PATH")).collect(),
+            base_item_types: BaseItemTypesRecord::load(&data_root.join("TODO_PATH")).collect(),
+            item_classes: ItemClassesRecord::load(&data_root.join("TODO_PATH")).collect(),
             tags: TagsRecord::load(&data_root.join("TODO_PATH")).collect(),
             essences: EssencesRecord::load(&data_root.join("TODO_PATH")).collect(),
             essence_target_item_categories: EssenceTargetItemCategoriesRecord::load(
                 &data_root.join("TODO_PATH"),
             )
             .collect(),
-            essence_mods: EssenceModRecord::load(&data_root.join("TODO_PATH")).collect(),
+            essence_mods: EssenceModsRecord::load(&data_root.join("TODO_PATH")).collect(),
         }
     }
 }
@@ -213,7 +212,7 @@ pub fn load_essence_mods(
     essence_names: &[String],
 ) -> HashMap<u32, HashMap<u32, Vec<u32>>> {
     let mut essences = HashMap::new();
-    EssenceModRecord::load(path).for_each(|row| {
+    EssenceModsRecord::load(path).for_each(|row| {
         // essencemods.Essence -> essences.BaseItemType -> baseitemtypes.Name
         let name = &essence_names[row.Essence as usize];
         // essencemods.TargetItemCategory -> essencetargetitemcategories.ItemClasses ->
@@ -232,7 +231,7 @@ pub fn load_mod_tiers(
     mod_familites: &[ModFamily],
     mod_tags: &[Option<ModTag>],
 ) -> (HashMap<TierId, Tier>, HashMap<ModGroup, Modifier>) {
-    ModRecord::load(path).fold(
+    ModsRecord::load(path).fold(
         (HashMap::new(), HashMap::new()),
         |(mut tiers, mut mod_stats), row| {
             // Parse out value ranges
@@ -310,7 +309,7 @@ pub fn load_mod_tiers(
 }
 
 pub fn load_item_classes(path: &Path) -> Vec<String> {
-    ItemClassRecord::load(path).map(|row| row.Id).collect()
+    ItemClassesRecord::load(path).map(|row| row.Id).collect()
 }
 
 pub fn load_mod_domains(
