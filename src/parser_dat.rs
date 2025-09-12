@@ -26,6 +26,7 @@ where
 pub trait RecordLoader: DeserializeOwned {
     /// Load the provided CSV into a structured iterator
     fn load(path: &Path) -> impl Iterator<Item = Self> {
+        println!("{:?}", path);
         csv::Reader::from_path(path)
             .unwrap()
             .into_deserialize::<Self>()
@@ -90,8 +91,7 @@ pub struct StatRecord {
 pub struct BaseItemTypesRecord {
     pub Name: String,
     pub ItemClass: u32,
-    /// This should actually be ModDomain, but there's a bug in poe_data_tools
-    pub SoundEffect: u32,
+    pub ModDomain: u32,
 }
 
 #[derive(Deserialize)]
@@ -167,36 +167,6 @@ impl Dats {
     }
 }
 
-pub fn load_mod_groups(path: &Path) -> Vec<ModGroup> {
-    ModTypeRecord::load(path).map(|row| row.Name).collect()
-}
-
-pub fn load_mod_families(path: &Path) -> Vec<ModFamily> {
-    ModFamilyRecord::load(path).map(|row| row.Id).collect()
-}
-
-pub fn load_stat_ids(path: &Path) -> Vec<StatID> {
-    StatRecord::load(path).map(|row| row.Id).collect()
-}
-
-pub fn load_mod_tags(path: &Path) -> Vec<Option<ModTag>> {
-    TagsRecord::load(path)
-        .map(|row| row.DisplayString.map(|_| row.Id))
-        .collect()
-}
-
-pub fn load_base_item_types(path: &Path) -> Vec<String> {
-    BaseItemTypesRecord::load(path)
-        .map(|row| row.Name)
-        .collect()
-}
-
-pub fn load_essences(path: &Path, base_item_types: &[String]) -> Vec<String> {
-    EssencesRecord::load(path)
-        .map(|row| base_item_types[row.BaseItemType as usize].clone())
-        .collect()
-}
-
 pub fn load_essence_target_item_categories(
     path: &Path,
     item_classes: &[String],
@@ -228,46 +198,31 @@ pub fn load_essence_mods(
     essences
 }
 
-pub fn load_mod_tiers(dats: &Dats) {}
-
-pub fn load_mod_tiers(
-    path: &Path,
-    stat_ids: &[StatID],
-    mod_groups: &[ModGroup],
-    mod_familites: &[ModFamily],
-    mod_tags: &[Option<ModTag>],
-) -> (HashMap<TierId, Tier>, HashMap<ModGroup, Modifier>) {
-    ModsRecord::load(path).fold(
+pub fn load_mod_tiers(dats: &Dats) -> (HashMap<TierId, Tier>, HashMap<ModGroup, Modifier>) {
+    dats.mods.iter().fold(
         (HashMap::new(), HashMap::new()),
         |(mut tiers, mut mod_stats), row| {
             // Parse out value ranges
+            let stats_ranges = [
+                (row.Stat1, row.Stat1Value),
+                (row.Stat2, row.Stat2Value),
+                (row.Stat3, row.Stat3Value),
+                (row.Stat4, row.Stat4Value),
+            ];
             let mut stats = vec![];
             let mut value_ranges = vec![];
-            if let Some(stat_id) = row.Stat1 {
-                let stat_id = &stat_ids[stat_id as usize];
-                stats.push(stat_id.clone());
-                value_ranges.push(row.Stat1Value);
-            }
-            if let Some(stat_id) = row.Stat2 {
-                let stat_id = &stat_ids[stat_id as usize];
-                stats.push(stat_id.clone());
-                value_ranges.push(row.Stat2Value);
-            }
-            if let Some(stat_id) = row.Stat3 {
-                let stat_id = &stat_ids[stat_id as usize];
-                stats.push(stat_id.clone());
-                value_ranges.push(row.Stat3Value);
-            }
-            if let Some(stat_id) = row.Stat4 {
-                let stat_id = &stat_ids[stat_id as usize];
-                stats.push(stat_id.clone());
-                value_ranges.push(row.Stat4Value);
+            for (stat_id, value_range) in stats_ranges {
+                if let Some(stat_id) = stat_id {
+                    let stat_id = &dats.stats[stat_id as usize].Id;
+                    stats.push(stat_id.clone());
+                    value_ranges.push(value_range);
+                }
             }
 
-            let mod_group = mod_groups[row.ModType as usize].clone();
+            let mod_group = &dats.mod_type[row.ModType as usize].Name;
 
             // TODO: Skip empty families?
-            let mod_family = &mod_familites[*row.Families.first().unwrap_or(&0) as usize];
+            let mod_family = &dats.mod_family[*row.Families.first().unwrap_or(&0) as usize].Id;
 
             let affix = match row.GenerationType {
                 1 => Affix::Prefix,
@@ -279,7 +234,7 @@ pub fn load_mod_tiers(
             let tags = row
                 .ImplicitTags
                 .iter()
-                .flat_map(|index| mod_tags[*index as usize].clone())
+                .flat_map(|index| dats.tags[*index as usize].DisplayString.clone())
                 .collect();
 
             let modifier = Modifier {
@@ -290,16 +245,16 @@ pub fn load_mod_tiers(
                 stats,
                 family: mod_family.clone(),
             };
-            if !mod_stats.contains_key(&mod_group) {
+            if !mod_stats.contains_key(mod_group) {
                 mod_stats.insert(mod_group.clone(), modifier);
             }
 
             tiers.insert(
                 row.Id.clone(),
                 Tier {
-                    id: row.Id,
-                    name: row.Name,
-                    mod_id: mod_group,
+                    id: row.Id.clone(),
+                    name: row.Name.clone(),
+                    mod_id: mod_group.clone(),
                     ilvl: row.Level,
                     value_ranges,
                     mod_domain: row.Domain,
@@ -310,28 +265,6 @@ pub fn load_mod_tiers(
             );
 
             (tiers, mod_stats)
-        },
-    )
-}
-
-pub fn load_item_classes(path: &Path) -> Vec<String> {
-    ItemClassesRecord::load(path).map(|row| row.Id).collect()
-}
-
-pub fn load_mod_domains(
-    path: &Path,
-    item_classes: &[String],
-) -> (HashMap<String, u32>, HashMap<String, u32>) {
-    BaseItemTypesRecord::load(path).fold(
-        (HashMap::new(), HashMap::new()),
-        |(mut specific, mut coarse), row| {
-            coarse.insert(
-                item_classes[row.ItemClass as usize].clone(),
-                row.SoundEffect,
-            );
-            specific.insert(row.Name, row.SoundEffect);
-
-            (specific, coarse)
         },
     )
 }

@@ -7,9 +7,7 @@ use poe_crafting::{
     FORMATTERS, ITEM_TIERS, MODS, TIERS,
     currency::{CURRENCIES, Currency},
     item_state::{ItemState, Rarity, get_valid_mods_for_item},
-    parser_dat::{
-        Dats, load_mod_families, load_mod_groups, load_mod_tags, load_mod_tiers, load_stat_ids,
-    },
+    parser_dat::{Dats, load_mod_tiers},
     parser_poe2db, parser_stat_desc,
     types::{BaseItemId, StatFormatters},
 };
@@ -21,10 +19,8 @@ fn init() {
     //      tables/  - Extracted with poe_data_tools
     //      coe/     - From Prohibited Library discord
     //      stat_descriptions.json      - https://repoe-fork.github.io/poe2/stat_translations/stat_descriptions.json
-    // let data_root = Path::new("/home/adam/repos/data/poe"); // laptop
-    let data_root = Path::new("/mnt/nvme_4tb/programming/data/poe2"); // desktop
-    let poe2_dat_root = data_root.join("tables");
-
+    let data_root = Path::new("/home/adam/repos/data/poe"); // laptop
+    // let data_root = Path::new("/mnt/nvme_4tb/programming/data/poe2"); // desktop
     // Load weight data
     let poe2db_root = parser_poe2db::load(&data_root.join("coe/poe2db_data_altered_weights.json"));
 
@@ -57,21 +53,11 @@ fn init() {
     println!("{:#?}", specific_bases);
 
     // Load mod groups from dat files
-    let dat_tables = Dats::load_tables(&poe2_dat_root);
-    let mod_groups = load_mod_groups(&poe2_dat_root.join("data/modtype.csv"));
-    let mod_families = load_mod_families(&poe2_dat_root.join("data/modfamily.csv"));
-    let mod_tags = load_mod_tags(&poe2_dat_root.join("data/tags.csv"));
-    let stat_ids = load_stat_ids(&poe2_dat_root.join("data/stats.csv"));
+    let dat_tables = Dats::load_tables(&data_root.join("tables"));
 
     // Load ModGroup -> [Tier] LUT from dat files
     // Load ModGroup -> [Stat] LUT
-    let (mut tiers, mod_stats) = load_mod_tiers(
-        &poe2_dat_root.join("data/mods.csv"),
-        &stat_ids,
-        &mod_groups,
-        &mod_families,
-        &mod_tags,
-    );
+    let (mut tiers, mod_stats) = load_mod_tiers(&dat_tables);
     MODS.set(mod_stats).unwrap();
 
     // Apply mod weights
