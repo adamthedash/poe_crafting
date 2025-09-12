@@ -131,10 +131,34 @@ pub struct EssenceModRecord {
     pub OutcomeMods: Vec<u32>,
 }
 
-pub struct Dats {}
+pub struct Dats {
+    pub mod_records: Vec<ModRecord>,
+    pub mod_type_records: Vec<ModTypeRecord>,
+    pub mod_family_records: Vec<ModFamilyRecord>,
+    pub stat_records: Vec<StatRecord>,
+    pub base_item_types_records: Vec<BaseItemTypesRecord>,
+    pub item_class_records: Vec<ItemClassRecord>,
+    pub tags_records: Vec<TagsRecord>,
+    pub essences_records: Vec<EssencesRecord>,
+    pub essence_target_item_categories_records: Vec<EssenceTargetItemCategoriesRecord>,
+    pub essence_mod_records: Vec<EssenceModRecord>,
+}
 
 impl Dats {
-    pub fn load_tables(data_root: &Path) -> Self {}
+    pub fn load_tables(data_root: &Path) -> Self {
+        Self {
+            mod_records: ModRecord::load(&data_root.join("TODO_PATH")).collect(),
+            mod_type_records: ModTypeRecord::load(&data_root.join("TODO_PATH")).collect(),
+            mod_family_records: ModFamilyRecord::load(&data_root.join("TODO_PATH")).collect(),
+            stat_records: StatRecord::load(&data_root.join("TODO_PATH")).collect(),
+            base_item_types_records: BaseItemTypesRecord::load(&data_root.join("TODO_PATH")).collect(),
+            item_class_records: ItemClassRecord::load(&data_root.join("TODO_PATH")).collect(),
+            tags_records: TagsRecord::load(&data_root.join("TODO_PATH")).collect(),
+            essences_records: EssencesRecord::load(&data_root.join("TODO_PATH")).collect(),
+            essence_target_item_categories_records: EssenceTargetItemCategoriesRecord::load(&data_root.join("TODO_PATH")).collect(),
+            essence_mod_records: EssenceModRecord::load(&data_root.join("TODO_PATH")).collect(),
+        }
+    }
 }
 
 pub fn load_mod_groups(path: &Path) -> Vec<ModGroup> {
