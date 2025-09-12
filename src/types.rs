@@ -61,7 +61,7 @@ pub struct Tier {
     /// Sample weight when rolling this mod
     pub weight: u32,
     /// The "rolling group" for this mod - maybe better to have in the Modifier struct?
-    pub mod_domain: u32,
+    pub mod_domain: usize,
 }
 
 /// Eg. %_attack_damage_per_glory_consumed_for_6_seconds_up_to_100

@@ -34,7 +34,7 @@ pub struct ModsRecord {
     pub Id: TierId,
     /// Index into ModType table
     pub ModType: usize,
-    pub Domain: u32,
+    pub Domain: usize,
 
     #[serde(deserialize_with = "deserialize_json_encoded")]
     pub Families: Vec<usize>,
@@ -81,8 +81,8 @@ pub struct StatRecord {
 #[derive(Deserialize)]
 pub struct BaseItemTypesRecord {
     pub Name: String,
-    pub ItemClass: u32,
-    pub ModDomain: u32,
+    pub ItemClass: usize,
+    pub ModDomain: usize,
 }
 
 #[derive(Deserialize)]
@@ -98,28 +98,28 @@ pub struct TagsRecord {
 
 #[derive(Deserialize)]
 pub struct EssencesRecord {
-    BaseItemType: u32,
+    BaseItemType: usize,
 }
 
 #[derive(Deserialize)]
 pub struct EssenceTargetItemCategoriesRecord {
     #[serde(deserialize_with = "deserialize_json_encoded")]
-    ItemClasses: Vec<u32>,
+    ItemClasses: Vec<usize>,
 }
 
 #[derive(Deserialize)]
 pub struct EssenceModsRecord {
-    pub Essence: u32,
-    pub TargetItemCategory: u32,
-    pub Mod1: Option<u32>,
+    pub Essence: usize,
+    pub TargetItemCategory: usize,
+    pub Mod1: Option<usize>,
     /// The mod that is displayed on the essence item, not what is actually rolled on use
     /// Used for essences that can give many outcomes.
     /// Eg. Mark of the Abyssal Lord (Prefix or Suffix)
     /// Eg. +# to Strength, Dexterity or Intelligence
-    pub DisplayMod: Option<u32>,
+    pub DisplayMod: Option<usize>,
     /// The possible outcome mods for multi-outcome essences
     #[serde(deserialize_with = "deserialize_json_encoded")]
-    pub OutcomeMods: Vec<u32>,
+    pub OutcomeMods: Vec<usize>,
 }
 
 pub struct Dats {
@@ -166,7 +166,7 @@ pub fn load_essence_target_item_categories(
         .map(|row| {
             row.ItemClasses
                 .into_iter()
-                .map(|item_class| item_classes[item_class as usize].clone())
+                .map(|item_class| item_classes[item_class].clone())
                 .collect()
         })
         .collect()
@@ -179,7 +179,7 @@ pub fn load_essence_mods(
     let essences = HashMap::new();
     EssenceModsRecord::load(path).for_each(|row| {
         // essencemods.Essence -> essences.BaseItemType -> baseitemtypes.Name
-        let name = &essence_names[row.Essence as usize];
+        let name = &essence_names[row.Essence];
         // essencemods.TargetItemCategory -> essencetargetitemcategories.ItemClasses ->
         //      itemclasses.Id -(kinda)-> BaseItemId
         // essencemods.Mod1 -> mods
