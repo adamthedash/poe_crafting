@@ -147,20 +147,20 @@ pub struct Dats {
 impl Dats {
     pub fn load_tables(data_root: &Path) -> Self {
         Self {
-            mod_records: ModRecord::load(&data_root.join("TODO_PATH")).collect(),
-            mod_type_records: ModTypeRecord::load(&data_root.join("TODO_PATH")).collect(),
-            mod_family_records: ModFamilyRecord::load(&data_root.join("TODO_PATH")).collect(),
-            stat_records: StatRecord::load(&data_root.join("TODO_PATH")).collect(),
-            base_item_types_records: BaseItemTypesRecord::load(&data_root.join("TODO_PATH"))
+            mods: ModRecord::load(&data_root.join("TODO_PATH")).collect(),
+            mod_type: ModTypeRecord::load(&data_root.join("TODO_PATH")).collect(),
+            mod_family: ModFamilyRecord::load(&data_root.join("TODO_PATH")).collect(),
+            stats: StatRecord::load(&data_root.join("TODO_PATH")).collect(),
+            base_item_types: BaseItemTypesRecord::load(&data_root.join("TODO_PATH"))
                 .collect(),
-            item_class_records: ItemClassRecord::load(&data_root.join("TODO_PATH")).collect(),
-            tags_records: TagsRecord::load(&data_root.join("TODO_PATH")).collect(),
-            essences_records: EssencesRecord::load(&data_root.join("TODO_PATH")).collect(),
-            essence_target_item_categories_records: EssenceTargetItemCategoriesRecord::load(
+            item_class: ItemClassRecord::load(&data_root.join("TODO_PATH")).collect(),
+            tags: TagsRecord::load(&data_root.join("TODO_PATH")).collect(),
+            essences: EssencesRecord::load(&data_root.join("TODO_PATH")).collect(),
+            essence_target_item_categories: EssenceTargetItemCategoriesRecord::load(
                 &data_root.join("TODO_PATH"),
             )
             .collect(),
-            essence_mod_records: EssenceModRecord::load(&data_root.join("TODO_PATH")).collect(),
+            essence_mods: EssenceModRecord::load(&data_root.join("TODO_PATH")).collect(),
         }
     }
 }
