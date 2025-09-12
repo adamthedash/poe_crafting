@@ -131,6 +131,12 @@ pub struct EssenceModRecord {
     pub OutcomeMods: Vec<u32>,
 }
 
+pub struct Dats {}
+
+impl Dats {
+    pub fn load_tables(data_root: &Path) -> Self {}
+}
+
 pub fn load_mod_groups(path: &Path) -> Vec<ModGroup> {
     ModTypeRecord::load(path).map(|row| row.Name).collect()
 }
