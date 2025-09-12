@@ -149,17 +149,17 @@ impl Dats {
         Self {
             mods: ModsRecord::load(&data_root.join("data/mods.csv")).collect(),
             mod_type: ModTypeRecord::load(&data_root.join("data/modtype.csv")).collect(),
-            mod_family: ModFamilyRecord::load(&data_root.join("TODO_PATH")).collect(),
-            stats: StatRecord::load(&data_root.join("TODO_PATH")).collect(),
-            base_item_types: BaseItemTypesRecord::load(&data_root.join("TODO_PATH")).collect(),
-            item_classes: ItemClassesRecord::load(&data_root.join("TODO_PATH")).collect(),
-            tags: TagsRecord::load(&data_root.join("TODO_PATH")).collect(),
-            essences: EssencesRecord::load(&data_root.join("TODO_PATH")).collect(),
+            mod_family: ModFamilyRecord::load(&data_root.join("data/modfamily.csv")).collect(),
+            stats: StatRecord::load(&data_root.join("data/stats.csv")).collect(),
+            base_item_types: BaseItemTypesRecord::load(&data_root.join("data/baseitemtypes.csv")).collect(),
+            item_classes: ItemClassesRecord::load(&data_root.join("data/itemclasses.csv")).collect(),
+            tags: TagsRecord::load(&data_root.join("data/tags.csv")).collect(),
+            essences: EssencesRecord::load(&data_root.join("data/essences.csv")).collect(),
             essence_target_item_categories: EssenceTargetItemCategoriesRecord::load(
-                &data_root.join("TODO_PATH"),
+                &data_root.join("data/essencetargetitemcategories.csv"),
             )
             .collect(),
-            essence_mods: EssenceModsRecord::load(&data_root.join("TODO_PATH")).collect(),
+            essence_mods: EssenceModsRecord::load(&data_root.join("data/essencemods.csv")).collect(),
         }
     }
 }
