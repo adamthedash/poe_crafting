@@ -11,7 +11,7 @@ use poe_crafting::{
         load_mod_families, load_mod_groups, load_mod_tags, load_mod_tiers, load_stat_ids,
     },
     parser_poe2db, parser_stat_desc,
-    types::StatFormatters,
+    types::{BaseItemId, StatFormatters},
 };
 use random_choice::random_choice;
 
@@ -29,10 +29,17 @@ fn init() {
     let poe2db_root = parser_poe2db::load(&data_root.join("coe/poe2db_data_altered_weights.json"));
 
     // Create TierId -> weight LUT
-    // Create BaseItemId -> [TierId] LUT
     let mut tier_weights = HashMap::new();
+    // Create BaseItemId -> [TierId] LUT
     let mut base_tiers = HashMap::new();
+    // Gloves -> {Gloves_StrDex, Gloves_DexInt, ...}
+    let mut specific_bases = HashMap::<String, HashSet<BaseItemId>>::new();
     for (item_name, item_root) in poe2db_root {
+        specific_bases
+            .entry(item_root.opt.ItemClassesCode)
+            .or_default()
+            .insert(item_name.clone());
+
         for tier in &item_root.normal {
             tier_weights.insert(tier.Code.clone(), tier.DropChance);
         }
@@ -47,6 +54,7 @@ fn init() {
         );
     }
     ITEM_TIERS.set(base_tiers).unwrap();
+    println!("{:#?}", specific_bases);
 
     // Load mod groups from dat files
     let mod_groups = load_mod_groups(&poe2_dat_root.join("data/modtype.csv"));
@@ -96,6 +104,8 @@ fn main() {
     let mods = MODS.get().unwrap();
     let item_tiers = ITEM_TIERS.get().unwrap();
     let formatters = FORMATTERS.get().unwrap();
+    println!("{:#?}", item_tiers.keys());
+    panic!();
 
     let bases = item_tiers.keys().collect::<Vec<_>>();
     let weights = vec![1.; bases.len()];

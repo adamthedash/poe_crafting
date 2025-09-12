@@ -162,7 +162,7 @@ impl ItemState {
 }
 
 /// Get the pool of mods that could ever roll on this item, regardless of its current state
-pub fn get_valid_mods_for_item<'a>(item: &ItemState) -> Vec<TierId> {
+pub fn get_valid_mods_for_item(item: &ItemState) -> Vec<TierId> {
     let tiers = TIERS.get().unwrap();
     let item_tiers = ITEM_TIERS.get().unwrap();
 

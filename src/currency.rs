@@ -679,12 +679,10 @@ impl Currency for PerfectEssence {
     }
 
     fn craft(&self, item: &mut ItemState, _candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
-        let mods = MODS.get().unwrap();
         let tiers = TIERS.get().unwrap();
 
         let new_tier_id = &self.tiers[&item.base_type];
         let new_tier = &tiers[new_tier_id];
-        let new_mod = &mods[&new_tier.mod_id];
 
         // If there's not enough space for the mod, remove a mod with the same affix
         // Otherwise, remove a random mod
