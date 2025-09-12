@@ -132,16 +132,16 @@ pub struct EssenceModRecord {
 }
 
 pub struct Dats {
-    pub mod_records: Vec<ModRecord>,
-    pub mod_type_records: Vec<ModTypeRecord>,
-    pub mod_family_records: Vec<ModFamilyRecord>,
-    pub stat_records: Vec<StatRecord>,
-    pub base_item_types_records: Vec<BaseItemTypesRecord>,
-    pub item_class_records: Vec<ItemClassRecord>,
-    pub tags_records: Vec<TagsRecord>,
-    pub essences_records: Vec<EssencesRecord>,
-    pub essence_target_item_categories_records: Vec<EssenceTargetItemCategoriesRecord>,
-    pub essence_mod_records: Vec<EssenceModRecord>,
+    pub mods: Vec<ModRecord>,
+    pub mod_type: Vec<ModTypeRecord>,
+    pub mod_family: Vec<ModFamilyRecord>,
+    pub stats: Vec<StatRecord>,
+    pub base_item_types: Vec<BaseItemTypesRecord>,
+    pub item_class: Vec<ItemClassRecord>,
+    pub tags: Vec<TagsRecord>,
+    pub essences: Vec<EssencesRecord>,
+    pub essence_target_item_categories: Vec<EssenceTargetItemCategoriesRecord>,
+    pub essence_mods: Vec<EssenceModRecord>,
 }
 
 impl Dats {
@@ -151,11 +151,15 @@ impl Dats {
             mod_type_records: ModTypeRecord::load(&data_root.join("TODO_PATH")).collect(),
             mod_family_records: ModFamilyRecord::load(&data_root.join("TODO_PATH")).collect(),
             stat_records: StatRecord::load(&data_root.join("TODO_PATH")).collect(),
-            base_item_types_records: BaseItemTypesRecord::load(&data_root.join("TODO_PATH")).collect(),
+            base_item_types_records: BaseItemTypesRecord::load(&data_root.join("TODO_PATH"))
+                .collect(),
             item_class_records: ItemClassRecord::load(&data_root.join("TODO_PATH")).collect(),
             tags_records: TagsRecord::load(&data_root.join("TODO_PATH")).collect(),
             essences_records: EssencesRecord::load(&data_root.join("TODO_PATH")).collect(),
-            essence_target_item_categories_records: EssenceTargetItemCategoriesRecord::load(&data_root.join("TODO_PATH")).collect(),
+            essence_target_item_categories_records: EssenceTargetItemCategoriesRecord::load(
+                &data_root.join("TODO_PATH"),
+            )
+            .collect(),
             essence_mod_records: EssenceModRecord::load(&data_root.join("TODO_PATH")).collect(),
         }
     }
