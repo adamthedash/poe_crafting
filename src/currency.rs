@@ -563,8 +563,8 @@ impl Currency for PerfectAugmentation {
 /// Lesser to Greater Essences
 #[derive(Clone, Debug)]
 pub struct Essence {
-    name: String,
-    tiers: HashMap<BaseItemId, TierId>,
+    pub name: String,
+    pub tiers: HashMap<BaseItemId, Vec<TierId>>,
 }
 impl Currency for Essence {
     fn name(&self) -> &str {
@@ -586,39 +586,46 @@ impl Currency for Essence {
         }
 
         // base type must match
-        let Some(new_tier_id) = self.tiers.get(&item.base_type) else {
+        let Some(new_tier_ids) = self.tiers.get(&item.base_type) else {
             return false;
         };
-        let new_tier = &tiers[new_tier_id];
-        let new_mod = &mods[&new_tier.mod_id];
+        let new_tiers = new_tier_ids
+            .iter()
+            .map(|tier_id| &tiers[tier_id])
+            .collect::<Vec<_>>();
 
         // Must not have a mod of the same family already
-        if item.mods.iter().any(|tier_id| {
-            let tier = &tiers[tier_id];
-            let modifier = &mods[&tier.mod_id];
-            modifier.family == new_mod.family
-        }) {
+        // Assumption: all mods added have the same family
+        let new_mod_family = &mods[&new_tiers.first().unwrap().mod_id].family;
+        if item.mod_familities().contains(new_mod_family) {
             return false;
         }
 
         // Must have space for the new mod
-        match new_tier.affix {
-            Affix::Prefix => item.num_prefixes() < 3,
-            Affix::Suffix => item.num_suffixes() < 3,
-            Affix::Corrupted => unreachable!(),
+        let new_mod_affixes = new_tiers.iter().map(|tier| tier.affix).collect::<Vec<_>>();
+        match (
+            new_mod_affixes.contains(&Affix::Prefix),
+            new_mod_affixes.contains(&Affix::Suffix),
+        ) {
+            // Can add either, so doesn't matter which is removed
+            (true, true) => true,
+            // Adds one affix, so space must be made if full
+            (true, false) => item.num_prefixes() < 3,
+            (false, true) => item.num_suffixes() < 3,
+            (false, false) => unreachable!(),
         }
     }
 
     fn craft(&self, item: &mut ItemState, _candidate_tiers: &[TierId], _omens: &HashSet<OmenId>) {
         item.rarity = Rarity::Rare;
-        item.mods.push(self.tiers[&item.base_type].clone());
+        Exalt.craft(item, &self.tiers[&item.base_type], &HashSet::new());
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct PerfectEssence {
-    name: String,
-    tiers: HashMap<BaseItemId, TierId>,
+    pub name: String,
+    pub tiers: HashMap<BaseItemId, Vec<TierId>>,
 }
 impl Currency for PerfectEssence {
     fn name(&self) -> &str {
@@ -640,14 +647,18 @@ impl Currency for PerfectEssence {
         }
 
         // base type must match
-        let Some(new_tier_id) = self.tiers.get(&item.base_type) else {
+        let Some(new_tier_ids) = self.tiers.get(&item.base_type) else {
             return false;
         };
-        let new_tier = &tiers[new_tier_id];
-        let new_mod = &mods[&new_tier.mod_id];
+        let new_tiers = new_tier_ids
+            .iter()
+            .map(|tier_id| &tiers[tier_id])
+            .collect::<Vec<_>>();
 
         // Must not have a mod of the same family already
-        if item.mod_familities().contains(&new_mod.family) {
+        // Assumption: all mods added have the same family
+        let new_mod_family = &mods[&new_tiers.first().unwrap().mod_id].family;
+        if item.mod_familities().contains(new_mod_family) {
             return false;
         }
 
@@ -655,14 +666,22 @@ impl Currency for PerfectEssence {
         // If there's not enough space for the mod, remove a mod with the same affix
         // Otherwise, remove a random mod
         let mut candidate_removes: Box<dyn Iterator<Item = &TierId>> = Box::new(item.mods.iter());
-        let has_space = match new_tier.affix {
-            Affix::Prefix => item.num_prefixes() < 3,
-            Affix::Suffix => item.num_suffixes() < 3,
-            Affix::Corrupted => unreachable!(),
+
+        let new_mod_affixes = new_tiers.iter().map(|tier| tier.affix).collect::<Vec<_>>();
+        let need_remove_affix = match (
+            new_mod_affixes.contains(&Affix::Prefix),
+            new_mod_affixes.contains(&Affix::Suffix),
+        ) {
+            // Can add either, so doesn't matter which is removed
+            (true, true) => None,
+            // Adds one affix, so space must be made if full
+            (true, false) => (item.num_prefixes() == 3).then_some(Affix::Prefix),
+            (false, true) => (item.num_suffixes() == 3).then_some(Affix::Suffix),
+            (false, false) => unreachable!(),
         };
-        if !has_space {
+        if let Some(affix) = need_remove_affix {
             // filter same affix as essence adds
-            candidate_removes = Box::new(filter_affix(candidate_removes, new_tier.affix));
+            candidate_removes = Box::new(filter_affix(candidate_removes, affix));
         }
 
         // Apply omens
@@ -681,20 +700,32 @@ impl Currency for PerfectEssence {
     fn craft(&self, item: &mut ItemState, _candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
         let tiers = TIERS.get().unwrap();
 
-        let new_tier_id = &self.tiers[&item.base_type];
-        let new_tier = &tiers[new_tier_id];
+        let new_tier_ids = &self.tiers[&item.base_type];
+        let new_tiers = new_tier_ids
+            .iter()
+            .map(|tier_id| &tiers[tier_id])
+            .collect::<Vec<_>>();
 
+        // Must have room for it
         // If there's not enough space for the mod, remove a mod with the same affix
         // Otherwise, remove a random mod
         let mut candidate_removes: Box<dyn Iterator<Item = &TierId>> = Box::new(item.mods.iter());
-        let has_space = match new_tier.affix {
-            Affix::Prefix => item.num_prefixes() < 3,
-            Affix::Suffix => item.num_suffixes() < 3,
-            Affix::Corrupted => unreachable!(),
+
+        let new_mod_affixes = new_tiers.iter().map(|tier| tier.affix).collect::<Vec<_>>();
+        let need_remove_affix = match (
+            new_mod_affixes.contains(&Affix::Prefix),
+            new_mod_affixes.contains(&Affix::Suffix),
+        ) {
+            // Can add either, so doesn't matter which is removed
+            (true, true) => None,
+            // Adds one affix, so space must be made if full
+            (true, false) => (item.num_prefixes() == 3).then_some(Affix::Prefix),
+            (false, true) => (item.num_suffixes() == 3).then_some(Affix::Suffix),
+            (false, false) => unreachable!(),
         };
-        if !has_space {
+        if let Some(affix) = need_remove_affix {
             // filter same affix as essence adds
-            candidate_removes = Box::new(filter_affix(candidate_removes, new_tier.affix));
+            candidate_removes = Box::new(filter_affix(candidate_removes, affix));
         }
 
         // Apply omens
@@ -719,8 +750,9 @@ impl Currency for PerfectEssence {
 
         item.mods.retain(|tier_id| *tier_id != to_remove);
 
-        // Add on the new mod
-        item.mods.push(new_tier_id.clone());
+        // Add on a new mod
+        // TODO: Check if this plays well with weights for essence mods
+        Exalt.craft(item, new_tier_ids, &HashSet::new());
     }
 }
 
@@ -858,33 +890,5 @@ pub static CURRENCIES: LazyLock<Vec<CurrencyType>> = LazyLock::new(|| {
         CurrencyType::PerfectTransmute,
         CurrencyType::GreaterAugmentation,
         CurrencyType::PerfectAugmentation,
-        CurrencyType::Essence(Essence {
-            name: "Lesser Essence of Mind".to_string(),
-            tiers: {
-                let mut tiers = HashMap::new();
-                let bases = ["Belt", "Boots", "Gloves", "Helmet", "Ring", "Amulet"];
-                for base in bases {
-                    tiers.insert(base.to_string(), "IncreasedMana3".to_string());
-                }
-
-                tiers
-            },
-        }),
-        CurrencyType::PerfectEssence(PerfectEssence {
-            name: "Perfect Essence of Battle".to_string(),
-            tiers: {
-                let mut tiers = HashMap::new();
-                let bases = ["Bow", "One Hand Mace", "Dagger", "Spear"];
-                for base in bases {
-                    tiers.insert(base.to_string(), "EssenceAttackSkillLevel1H1".to_string());
-                }
-                let bases = ["Crossbow", "Two Hand Mace", "Warstaff"];
-                for base in bases {
-                    tiers.insert(base.to_string(), "EssenceAttackSkillLevel2H1".to_string());
-                }
-
-                tiers
-            },
-        }),
     ]
 });

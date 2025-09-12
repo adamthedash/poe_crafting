@@ -1,6 +1,9 @@
 use std::{collections::HashMap, sync::OnceLock};
 
-use crate::types::{ItemMods, ModGroup, Modifier, StatFormatters, Tier, TierId};
+use crate::{
+    currency::CurrencyType,
+    types::{ItemMods, ModGroup, Modifier, StatFormatters, Tier, TierId},
+};
 
 pub mod crafting;
 pub mod currency;
@@ -15,3 +18,4 @@ pub static FORMATTERS: OnceLock<StatFormatters> = OnceLock::new();
 pub static TIERS: OnceLock<HashMap<TierId, Tier>> = OnceLock::new();
 pub static MODS: OnceLock<HashMap<ModGroup, Modifier>> = OnceLock::new();
 pub static ITEM_TIERS: OnceLock<ItemMods> = OnceLock::new();
+pub static ESSENCES: OnceLock<Vec<CurrencyType>> = OnceLock::new();

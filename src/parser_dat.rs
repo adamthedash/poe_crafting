@@ -3,7 +3,10 @@ use std::{collections::HashMap, path::Path};
 
 use serde::{Deserialize, Deserializer, de::DeserializeOwned};
 
-use crate::types::{Affix, ModGroup, ModType, Modifier, StatID, Tier, TierId};
+use crate::{
+    currency::{CurrencyType, Essence, PerfectEssence},
+    types::{Affix, ModGroup, ModType, Modifier, StatID, Tier, TierId},
+};
 
 /// Deserialise any json-encoded value
 fn deserialize_json_encoded<'de, D, T>(deserializer: D) -> Result<T, D::Error>
@@ -156,6 +159,60 @@ impl Dats {
                 .collect(),
         }
     }
+}
+
+pub fn load_essences(dats: &Dats) -> Vec<CurrencyType> {
+    // Essence -> CoarseBaseId -> [ModId]
+    let mut essence_base_mods = HashMap::<_, HashMap<_, _>>::new();
+    dats.essence_mods.iter().for_each(|row| {
+        // essencemods.TargetItemCategory -> essencetargetitemcategories.ItemClasses ->
+        //      itemclasses.Id -(kinda)-> BaseItemId
+        let target_base_items = dats.essence_target_item_categories[row.TargetItemCategory]
+            .ItemClasses
+            .iter()
+            .map(|target_item_class| dats.item_classes[*target_item_class].Id.clone())
+            .collect::<Vec<_>>();
+
+        // essencemods.Mod1 -> mods
+        // essencemods.OutcomeMods -> mods
+        let mods = if let Some(mod_index) = row.Mod1 {
+            // Single outcome
+            vec![dats.mods[mod_index].Id.clone()]
+        } else {
+            // Multiple outcomes
+            row.OutcomeMods
+                .iter()
+                .map(|mod_index| dats.mods[*mod_index].Id.clone())
+                .collect()
+        };
+
+        for base_item in target_base_items {
+            essence_base_mods
+                .entry(row.Essence)
+                .or_default()
+                .insert(base_item, mods.clone());
+        }
+    });
+
+    essence_base_mods
+        .into_iter()
+        .map(|(essence_index, base_mods)| {
+            // essencemods.Essence -> essences.BaseItemType -> baseitemtypes.Name
+            let name = &dats.base_item_types[dats.essences[essence_index].BaseItemType].Name;
+
+            if name.starts_with("Perfect") {
+                CurrencyType::PerfectEssence(PerfectEssence {
+                    name: name.clone(),
+                    tiers: base_mods,
+                })
+            } else {
+                CurrencyType::Essence(Essence {
+                    name: name.clone(),
+                    tiers: base_mods,
+                })
+            }
+        })
+        .collect()
 }
 
 pub fn load_essence_target_item_categories(

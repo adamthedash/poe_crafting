@@ -4,10 +4,10 @@ use std::{
 };
 
 use poe_crafting::{
-    FORMATTERS, ITEM_TIERS, MODS, TIERS,
+    ESSENCES, FORMATTERS, ITEM_TIERS, MODS, TIERS,
     currency::{CURRENCIES, Currency},
     item_state::{ItemState, Rarity, get_valid_mods_for_item},
-    parser_dat::{Dats, load_mod_tiers},
+    parser_dat::{Dats, load_essences, load_mod_tiers},
     parser_poe2db, parser_stat_desc,
     types::{BaseItemId, StatFormatters},
 };
@@ -19,8 +19,8 @@ fn init() {
     //      tables/  - Extracted with poe_data_tools
     //      coe/     - From Prohibited Library discord
     //      stat_descriptions.json      - https://repoe-fork.github.io/poe2/stat_translations/stat_descriptions.json
-    let data_root = Path::new("/home/adam/repos/data/poe"); // laptop
-    // let data_root = Path::new("/mnt/nvme_4tb/programming/data/poe2"); // desktop
+    // let data_root = Path::new("/home/adam/repos/data/poe"); // laptop
+    let data_root = Path::new("/mnt/nvme_4tb/programming/data/poe2"); // desktop
     // Load weight data
     let poe2db_root = parser_poe2db::load(&data_root.join("coe/poe2db_data_altered_weights.json"));
 
@@ -50,7 +50,6 @@ fn init() {
         );
     }
     ITEM_TIERS.set(base_tiers).unwrap();
-    println!("{:#?}", specific_bases);
 
     // Load mod groups from dat files
     let dat_tables = Dats::load_tables(&data_root.join("tables"));
@@ -65,6 +64,7 @@ fn init() {
         tier.weight = *tier_weights.get(mod_group).unwrap_or(&0);
     }
     TIERS.set(tiers).unwrap();
+    ESSENCES.set(load_essences(&dat_tables)).unwrap();
 
     // Load stat descriptions
     let stat_desc_root = parser_stat_desc::load(&data_root.join("stat_descriptions.json"));
@@ -91,8 +91,8 @@ fn main() {
     let mods = MODS.get().unwrap();
     let item_tiers = ITEM_TIERS.get().unwrap();
     let formatters = FORMATTERS.get().unwrap();
-    println!("{:#?}", item_tiers.keys());
-    panic!();
+    // println!("{:#?}", ESSENCES.get().unwrap());
+    // panic!();
 
     let bases = item_tiers.keys().collect::<Vec<_>>();
     let weights = vec![1.; bases.len()];
@@ -111,6 +111,7 @@ fn main() {
             // Select a random currency
             let currencies = CURRENCIES
                 .iter()
+                .chain(ESSENCES.get().unwrap())
                 .filter(|c| c.can_be_used(&item, &candidate_tiers, &HashSet::new()))
                 .collect::<Vec<_>>();
             let weights = vec![1.; currencies.len()];
@@ -137,7 +138,7 @@ fn main() {
                     .map(|o| (*o).clone()),
             );
 
-            // println!("{:?} {:?}", omens, currency);
+            println!("{:?} {:?}", omens, currency);
             let before = item.clone();
             currency.craft(&mut item, &candidate_tiers, &omens);
             if !item.is_valid() {
