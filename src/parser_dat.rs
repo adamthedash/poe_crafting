@@ -151,15 +151,18 @@ impl Dats {
             mod_type: ModTypeRecord::load(&data_root.join("data/modtype.csv")).collect(),
             mod_family: ModFamilyRecord::load(&data_root.join("data/modfamily.csv")).collect(),
             stats: StatRecord::load(&data_root.join("data/stats.csv")).collect(),
-            base_item_types: BaseItemTypesRecord::load(&data_root.join("data/baseitemtypes.csv")).collect(),
-            item_classes: ItemClassesRecord::load(&data_root.join("data/itemclasses.csv")).collect(),
+            base_item_types: BaseItemTypesRecord::load(&data_root.join("data/baseitemtypes.csv"))
+                .collect(),
+            item_classes: ItemClassesRecord::load(&data_root.join("data/itemclasses.csv"))
+                .collect(),
             tags: TagsRecord::load(&data_root.join("data/tags.csv")).collect(),
             essences: EssencesRecord::load(&data_root.join("data/essences.csv")).collect(),
             essence_target_item_categories: EssenceTargetItemCategoriesRecord::load(
                 &data_root.join("data/essencetargetitemcategories.csv"),
             )
             .collect(),
-            essence_mods: EssenceModsRecord::load(&data_root.join("data/essencemods.csv")).collect(),
+            essence_mods: EssenceModsRecord::load(&data_root.join("data/essencemods.csv"))
+                .collect(),
         }
     }
 }
@@ -167,6 +170,7 @@ impl Dats {
 pub fn load_mod_groups(path: &Path) -> Vec<ModGroup> {
     ModTypeRecord::load(path).map(|row| row.Name).collect()
 }
+
 pub fn load_mod_families(path: &Path) -> Vec<ModFamily> {
     ModFamilyRecord::load(path).map(|row| row.Id).collect()
 }
@@ -223,6 +227,8 @@ pub fn load_essence_mods(
 
     essences
 }
+
+pub fn load_mod_tiers(dats: &Dats) {}
 
 pub fn load_mod_tiers(
     path: &Path,

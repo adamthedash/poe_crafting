@@ -8,7 +8,7 @@ use poe_crafting::{
     currency::{CURRENCIES, Currency},
     item_state::{ItemState, Rarity, get_valid_mods_for_item},
     parser_dat::{
-        load_mod_families, load_mod_groups, load_mod_tags, load_mod_tiers, load_stat_ids,
+        Dats, load_mod_families, load_mod_groups, load_mod_tags, load_mod_tiers, load_stat_ids,
     },
     parser_poe2db, parser_stat_desc,
     types::{BaseItemId, StatFormatters},
@@ -57,6 +57,7 @@ fn init() {
     println!("{:#?}", specific_bases);
 
     // Load mod groups from dat files
+    let dat_tables = Dats::load_tables(&poe2_dat_root);
     let mod_groups = load_mod_groups(&poe2_dat_root.join("data/modtype.csv"));
     let mod_families = load_mod_families(&poe2_dat_root.join("data/modfamily.csv"));
     let mod_tags = load_mod_tags(&poe2_dat_root.join("data/tags.csv"));
