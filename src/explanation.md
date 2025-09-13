@@ -28,7 +28,6 @@ Augmentation:
         Item must be Magic rarity  
         Item must have <2 modifiers  
     Effects:  
-        Rarity Normal -> Magic  
         Adds 1 random modifier  
     Variants:  
         Standard - Adds modifiers of any level  
@@ -172,7 +171,7 @@ Dextral Essence: 30
 Sinistral Essence: 30  
 
 
-## Tips & Tricks
+## Tips, Tricks & Edge Cases
 **Homogenous Omen**
 A Homogenous omen can be used to target specific modifiers. It works by taking a combined set of unique tags across all modifiers on the item. The pool of modifiers that can be rolled is then filtered to those which have at least one tag in common with the set. Having more than one mod with the same tag doesn't increase the chance of rolling similar mods.  
 For example, for a rare item with mods:  
@@ -187,12 +186,14 @@ And mod pool:
 
 The unique set of tags on the item is {Attack, Speed, Damage}. Mods 3 & 4 both have at least 1 tag in common with the item, while Mods 5 & 6 do not. Therefore the mod pool is limited to Mod 3 & 4.  
 
-
 **Omen Combinations (non-exhaustive)**
 - Greater + Dextral Exalt = Add 2 suffixes in one use
 - Greater + Sinistral Exalt = Add 2 prefixes in one use
 - Greater + Annul = Remove 2 modifiers 
 - Whittling + directional omens (Dextral/Sinistral) + Chaos give you surgical control over mod improvement
+
+When using a Greater + Dextral/Sinistral + Exalt, the item must have room for 2 suffixes or 2 prefixes. If not, then the craft cannot be performed.  
+
 
 ## Your task
 Here is the list of available modifiers that can rolled on an item:  
