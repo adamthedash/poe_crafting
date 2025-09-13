@@ -3,9 +3,10 @@ use std::{
     path::Path,
 };
 
+use itertools::Itertools;
 use poe_crafting::{
     ESSENCES, FORMATTERS, ITEM_TIERS, MODS, TIERS,
-    currency::{CURRENCIES, Currency},
+    currency::{CURRENCIES, Currency, CurrencyType},
     item_state::{ItemState, Rarity, get_valid_mods_for_item},
     parser_dat::{Dats, load_essences, load_mod_tiers},
     parser_poe2db, parser_stat_desc,
@@ -84,9 +85,7 @@ fn init() {
     FORMATTERS.set(stat_formatters).unwrap();
 }
 
-fn main() {
-    init();
-
+fn random_crafts() {
     let tiers = TIERS.get().unwrap();
     let mods = MODS.get().unwrap();
     let item_tiers = ITEM_TIERS.get().unwrap();
@@ -152,5 +151,68 @@ fn main() {
 
         item.print_item();
         println!();
+    }
+}
+
+fn main() {
+    init();
+
+    let item_tiers = ITEM_TIERS.get().unwrap();
+    let tiers = TIERS.get().unwrap();
+    let mods = MODS.get().unwrap();
+
+    let mut item = ItemState {
+        base_type: "Bow".to_string(),
+        item_level: 75,
+        rarity: Rarity::Normal,
+        mods: vec![],
+    };
+
+    ESSENCES.get().unwrap().iter().for_each(|e| {
+        let (name, tier_ids) = match e {
+            CurrencyType::Essence(essence) => (&essence.name, essence.tiers.get(&item.base_type)),
+            CurrencyType::PerfectEssence(essence) => {
+                (&essence.name, essence.tiers.get(&item.base_type))
+            }
+            _ => unreachable!(),
+        };
+
+        if ["Greater", "Perfect"]
+            .into_iter()
+            .any(|pre| name.contains(pre))
+            && let Some(tier_ids) = tier_ids
+        {
+            println!("{}", name);
+            for tier_id in tier_ids {
+                let tier = &tiers[tier_id];
+                let modifier = &mods[&tier.mod_id];
+                println!(
+                    "\t{} ({:?}), tags: {:?}, available levels: {:?}  ",
+                    tier.mod_id,
+                    tier.affix,
+                    modifier.tags,
+                    [tier.ilvl]
+                );
+            }
+        }
+    });
+
+    let candidate_tiers = get_valid_mods_for_item(&item);
+
+    let candidate_tiers = candidate_tiers
+        .iter()
+        .map(|tier_id| &tiers[tier_id])
+        .sorted_by_key(|tier| (&tier.affix, &tier.mod_id, tier.ilvl))
+        .chunk_by(|tier| (tier.affix, &tier.mod_id));
+    for ((affix, mod_id), group) in &candidate_tiers {
+        let tiers = group
+            .filter(|tier| tier.ilvl >= 35)
+            .map(|tier| tier.ilvl)
+            .collect::<Vec<_>>();
+
+        println!(
+            "{} ({:?}), tags: {:?}, available levels: {:?}  ",
+            mod_id, affix, mods[mod_id].tags, tiers
+        );
     }
 }

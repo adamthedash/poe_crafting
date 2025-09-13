@@ -6,7 +6,7 @@ use std::collections::{HashMap, HashSet};
 use regex::Regex;
 use serde::Deserialize;
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, PartialOrd, Ord)]
 pub enum Affix {
     Prefix,
     Suffix,
