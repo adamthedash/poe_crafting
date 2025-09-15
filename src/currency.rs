@@ -817,6 +817,8 @@ pub enum CurrencyType {
     PerfectAugmentation,
     Essence(Essence),
     PerfectEssence(PerfectEssence),
+    GreaterRegal,
+    PerfectRegal,
 }
 
 impl Currency for CurrencyType {
@@ -839,6 +841,8 @@ impl Currency for CurrencyType {
             Self::PerfectAugmentation => PerfectAugmentation.name(),
             Self::Essence(essence) => essence.name(),
             Self::PerfectEssence(essence) => essence.name(),
+            Self::GreaterRegal => Regal.name(),
+            Self::PerfectRegal => Regal.name(),
         }
     }
 
@@ -870,6 +874,8 @@ impl Currency for CurrencyType {
             }
             Self::Essence(essence) => essence.can_be_used(item, candidate_tiers, omens),
             Self::PerfectEssence(essence) => essence.can_be_used(item, candidate_tiers, omens),
+            Self::GreaterRegal => Regal.can_be_used(item, candidate_tiers, omens),
+            Self::PerfectRegal => Regal.can_be_used(item, candidate_tiers, omens),
         }
     }
 
@@ -892,6 +898,8 @@ impl Currency for CurrencyType {
             Self::PerfectAugmentation => PerfectAugmentation.craft(item, candidate_tiers, omens),
             Self::Essence(essence) => essence.craft(item, candidate_tiers, omens),
             Self::PerfectEssence(essence) => essence.craft(item, candidate_tiers, omens),
+            Self::GreaterRegal => GreaterRegal.craft(item, candidate_tiers, omens),
+            Self::PerfectRegal => PerfectRegal.craft(item, candidate_tiers, omens),
         }
     }
 }
@@ -901,7 +909,7 @@ impl CurrencyType {
     pub fn possible_omens(&self) -> HashSet<OmenId> {
         use CurrencyType::*;
         let omens = match self {
-            Regal => vec!["Homogenising"],
+            Regal | GreaterRegal | PerfectRegal => vec!["Homogenising"],
             Annulment => vec!["Sinistral", "Dextral", "Greater"],
             Alchemy | PerfectEssence(_) => vec!["Sinistral", "Dextral"],
             Chaos | GreaterChaos | PerfectChaos => vec!["Sinistral", "Dextral", "Whittling"],
