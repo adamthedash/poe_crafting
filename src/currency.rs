@@ -122,6 +122,48 @@ impl Currency for Regal {
     }
 }
 
+pub struct GreaterRegal;
+impl Currency for GreaterRegal {
+    fn name(&self) -> &str {
+        "Greater Regal"
+    }
+
+    fn can_be_used(
+        &self,
+        item: &ItemState,
+        candidate_tiers: &[TierId],
+        omens: &HashSet<OmenId>,
+    ) -> bool {
+        Regal.can_be_used(item, candidate_tiers, omens)
+    }
+
+    fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
+        let candidate_tiers = filter_greater(candidate_tiers);
+        Regal.craft(item, &candidate_tiers, omens);
+    }
+}
+
+pub struct PerfectRegal;
+impl Currency for PerfectRegal {
+    fn name(&self) -> &str {
+        "Perfect Regal"
+    }
+
+    fn can_be_used(
+        &self,
+        item: &ItemState,
+        candidate_tiers: &[TierId],
+        omens: &HashSet<OmenId>,
+    ) -> bool {
+        Regal.can_be_used(item, candidate_tiers, omens)
+    }
+
+    fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
+        let candidate_tiers = filter_perfect(candidate_tiers);
+        Regal.craft(item, &candidate_tiers, omens);
+    }
+}
+
 pub struct Exalt;
 impl Currency for Exalt {
     fn name(&self) -> &str {
@@ -890,5 +932,7 @@ pub static CURRENCIES: LazyLock<Vec<CurrencyType>> = LazyLock::new(|| {
         CurrencyType::PerfectTransmute,
         CurrencyType::GreaterAugmentation,
         CurrencyType::PerfectAugmentation,
+        CurrencyType::GreaterRegal,
+        CurrencyType::PerfectRegal,
     ]
 });
