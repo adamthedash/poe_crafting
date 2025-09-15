@@ -11,6 +11,7 @@ use crate::{
 };
 
 /// Eg. LocalAttackSpeed T2-T1
+#[derive(Clone)]
 pub struct ModifierCondition {
     pub mod_group: ModGroup,
     pub levels: Vec<u32>,
@@ -22,6 +23,7 @@ impl ModifierCondition {
     }
 }
 
+#[derive(Clone)]
 pub enum ConditionGroup {
     Count {
         count: RangeInclusive<usize>,
@@ -104,8 +106,9 @@ impl Strategy {
             .filter(|(cond, _)| cond.check(item))
             .collect::<Vec<_>>();
 
-        assert_eq!(matching_states.len(), 1, "No/multiple matching states!");
+        assert!(!matching_states.is_empty(), "No matching states!");
 
+        // Always return the first match
         matching_states[0].1.as_ref()
     }
 }
