@@ -10,6 +10,7 @@ use poe_crafting::{
     item_state::{ItemState, Rarity, get_valid_mods_for_item},
     parser_dat::{Dats, load_essences, load_mod_tiers},
     parser_poe2db, parser_stat_desc,
+    strategy::{Condition, ConditionGroup, Strategy},
     types::{BaseItemId, StatFormatters},
 };
 use random_choice::random_choice;
@@ -20,8 +21,8 @@ fn init() {
     //      tables/  - Extracted with poe_data_tools
     //      coe/     - From Prohibited Library discord
     //      stat_descriptions.json      - https://repoe-fork.github.io/poe2/stat_translations/stat_descriptions.json
-    // let data_root = Path::new("/home/adam/repos/data/poe"); // laptop
-    let data_root = Path::new("/mnt/nvme_4tb/programming/data/poe2"); // desktop
+    let data_root = Path::new("/home/adam/repos/data/poe"); // laptop
+    // let data_root = Path::new("/mnt/nvme_4tb/programming/data/poe2"); // desktop
     // Load weight data
     let poe2db_root = parser_poe2db::load(&data_root.join("coe/poe2db_data_altered_weights.json"));
 
@@ -154,9 +155,7 @@ fn random_crafts() {
     }
 }
 
-fn main() {
-    init();
-
+fn print_llm_stuff() {
     let item_tiers = ITEM_TIERS.get().unwrap();
     let tiers = TIERS.get().unwrap();
     let mods = MODS.get().unwrap();
@@ -214,5 +213,61 @@ fn main() {
             "{} ({:?}), tags: {:?}, available levels: {:?}  ",
             mod_id, affix, mods[mod_id].tags, tiers
         );
+    }
+}
+
+fn main() {
+    init();
+
+    let mut item = ItemState {
+        base_type: "Bow".to_string(),
+        item_level: 75,
+        rarity: Rarity::Normal,
+        mods: vec![],
+    };
+
+    let strategy = Strategy(vec![
+        (
+            Condition {
+                rarity: Rarity::Normal,
+                groups: vec![],
+            },
+            Some((HashSet::new(), CurrencyType::PerfectTransmute)),
+        ),
+        (
+            Condition {
+                rarity: Rarity::Magic,
+                groups: vec![ConditionGroup::AffixCount {
+                    suffixes: (0..=1),
+                    prefixes: (0..=1),
+                    affixes: (0..=1),
+                }],
+            },
+            Some((HashSet::new(), CurrencyType::PerfectAugmentation)),
+        ),
+        (
+            Condition {
+                rarity: Rarity::Magic,
+                groups: vec![ConditionGroup::AffixCount {
+                    suffixes: (0..=1),
+                    prefixes: (0..=1),
+                    affixes: (2..=2),
+                }],
+            },
+            Some((HashSet::new(), CurrencyType::PerfectAugmentation)),
+        ),
+    ]);
+
+    let candidate_tiers = get_valid_mods_for_item(&item);
+    while let Some((omens, currency)) = strategy.get_craft(&item) {
+        assert!(
+            currency.can_be_used(&item, &candidate_tiers, omens),
+            "Currency cannot be used in current state!"
+        );
+
+        currency.craft(&mut item, &candidate_tiers, omens);
+        println!("{:?} {}", omens, currency.name());
+        item.print_item();
+        println!();
     }
 }

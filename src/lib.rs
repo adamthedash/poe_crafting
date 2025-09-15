@@ -12,6 +12,7 @@ pub mod parser_coe;
 pub mod parser_dat;
 pub mod parser_poe2db;
 pub mod parser_stat_desc;
+pub mod strategy;
 pub mod types;
 
 pub static FORMATTERS: OnceLock<StatFormatters> = OnceLock::new();
