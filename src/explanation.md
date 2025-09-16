@@ -21,8 +21,8 @@ Transmute:
         Adds 1 random modifier  
     Variants:  
         Standard - Adds modifiers of any level  
-        Greater - Adds modifiers with a minimum level of 35  
-        Perfect - Adds modifiers with a minimum level of 50  
+        Greater - Adds modifiers with a minimum level of 55  
+        Perfect - Adds modifiers with a minimum level of 70  
 Augmentation:  
     Usability constraints:  
         Item must be Magic rarity  
@@ -30,9 +30,9 @@ Augmentation:
     Effects:  
         Adds 1 random modifier  
     Variants:  
-        Standard - Adds modifiers of any level  
-        Greater - Adds modifiers with a minimum level of 35  
-        Perfect - Adds modifiers with a minimum level of 50  
+        I - Adds modifiers of any level  
+        II - Adds modifiers with a minimum level of 55  
+        III - Adds modifiers with a minimum level of 70  
 Regal:  
     Usability constraints:  
         Item must be Magic rarity  
@@ -42,9 +42,9 @@ Regal:
     Omens:
         Homogenous - Only modifiers with at least one tag in common with existing modifiers on the item are added.
     Variants:  
-        Standard - Adds modifiers of any level  
-        Greater - Adds modifiers with a minimum level of 35  
-        Perfect - Adds modifiers with a minimum level of 50  
+        I - Adds modifiers of any level  
+        II - Adds modifiers with a minimum level of 35  
+        III - Adds modifiers with a minimum level of 50  
 Exalt:  
     Usability constraints:  
         Item must be Rare rarity  
@@ -58,9 +58,9 @@ Exalt:
         Homogenous - Only modifiers with at least one tag in common with existing modifiers on the item are added.
         Greater - Adds 2 modifiers  
     Variants:  
-        Standard - Adds modifiers of any level  
-        Greater - Adds modifiers with a minimum level of 35  
-        Perfect - Adds modifiers with a minimum level of 50  
+        I - Adds modifiers of any level  
+        II - Adds modifiers with a minimum level of 35  
+        III - Adds modifiers with a minimum level of 50  
 Chaos:  
     Usability constraints:  
         Item must be Rare rarity  
@@ -73,9 +73,9 @@ Chaos:
         Sinistral - Only a Prefix is removed  
         Whittling - Removes the modifier with the lowest level. If there are several with the same lowest level, one of them is chosen randomly.  
     Variants:  
-        Standard - Adds modifiers of any level  
-        Greater - Adds modifiers with a minimum level of 35  
-        Perfect - Adds modifiers with a minimum level of 50  
+        I - Adds modifiers of any level  
+        II - Adds modifiers with a minimum level of 35  
+        III - Adds modifiers with a minimum level of 50  
 Annul:  
     Usability constraints:  
         Item must have at least 1 modifier  
@@ -84,7 +84,6 @@ Annul:
     Omens:
         Dextral - Only a Suffix is removed  
         Sinistral - Only a Prefix is removed  
-        Greater - Removes 2 modifiers  
 Greater Essence:  
     Usability constraints:  
         Item must be Magic rarity  
@@ -137,38 +136,38 @@ Perfect Essence of Haste
 
 ## Costs
 Here are the approximate costs of each currency. All prices are in units of 1 Standard Exalt.  
-Standard Transmute: 0  
-Greater Transmute: 0  
-Perfect Transmute: 1  
-Standard Augmentation: 0  
-Greater Augmentation: 0  
-Perfect Augmentation: 2  
-Standard Regal: 0  
-Greater Regal: 1  
-Perfect Regal: 14  
-Standard Exalt: 1  
-Greater Exalt: 3  
-Perfect Exalt: 328  
-Standard Chaos: 4  
-Greater Chaos: 14  
-Perfect Chaos: 211  
+Transmute I: 0  
+Transmute II: 0  
+Transmute III: 1  
+Augmentation I: 0  
+Augmentation II: 0  
+Augmentation III: 2  
+Regal I: 0  
+Regal II: 1  
+Regal III: 14  
+Exalt I: 1  
+Exalt II: 3  
+Exalt III: 328  
+Chaos I: 4  
+Chaos II: 14  
+Chaos III: 211  
 Annul: 45  
 
 All essences: 4  
 
 Omens:  
-Homogenous Regal: 7  
-Dextral Exalt: 3  
-Sinistral Exalt: 3  
-Greater Exalt: 2  
-Homogenous Exalt: 89  
-Dextral Chaos: 250  
-Sinistral Chaos: 373  
-Whittling Chaos: 178  
-Dextral Annul: 384  
-Sinistral Annul: 492  
-Dextral Essence: 30  
-Sinistral Essence: 30  
+Homogenous (Regal): 7  
+Dextral (Exalt): 3  
+Sinistral (Exalt): 3  
+Greater (Exalt): 2  
+Homogenous (Exalt): 89  
+Dextral (Chaos): 250  
+Sinistral (Chaos): 373  
+Whittling (Chaos): 178  
+Dextral (Annul): 384  
+Sinistral (Annul): 492  
+Dextral (Essence): 30  
+Sinistral (Essence): 30  
 
 
 ## Tips, Tricks & Edge Cases
@@ -187,12 +186,17 @@ And mod pool:
 The unique set of tags on the item is {Attack, Speed, Damage}. Mods 3 & 4 both have at least 1 tag in common with the item, while Mods 5 & 6 do not. Therefore the mod pool is limited to Mod 3 & 4.  
 
 **Omen Combinations (non-exhaustive)**
-- Greater + Dextral Exalt = Add 2 suffixes in one use
-- Greater + Sinistral Exalt = Add 2 prefixes in one use
-- Greater + Annul = Remove 2 modifiers 
-- Whittling + directional omens (Dextral/Sinistral) + Chaos give you surgical control over mod improvement
+- Greater + Dextral + Exalt = Add 2 suffixes in one use
+- Greater + Sinistral + Exalt = Add 2 prefixes in one use
+- Whittling + directional omens (Dextral/Sinistral) + Chaos = Reroll the lowest level Prefix or Suffix
 
 When using a Greater + Dextral/Sinistral + Exalt, the item must have room for 2 suffixes or 2 prefixes. If not, then the craft cannot be performed.  
+
+**Forcing affix removal with Perfect Essences**  
+Essences add a guaranteed modifier to an item. There must be space for the modifier on the item, so when the item is full with the same affix as the added modifier, then it is forced to remove one of those affixes.  
+For example, if an item has 2 prefixes and 3 suffixes, using a `Perfect Essence of Haste` on it will only ever remove a suffix, as the `EssenceOnslaughtOnKill` modifier is a suffix.  
+This can be a cheaper way than using a directional omen.  
+
 
 
 ## Your task
@@ -232,9 +236,10 @@ One of:
 Suffixes:
 - AdditionalArrows
 - GlobalIncreaseProjectileSkillGemLevelWeapon (level 55)
-- LocalIncreasedAttackSpeed (level 37)
+- LocalIncreasedAttackSpeed (level >= 37)
 
 You will start with a Magic rarity item, with 1 modifier of your choosing.  
 Consider the rough prices of currencies in your decisions, but don't avoid using them completely due to cost.  
+At each step of your strategy, consider the pool of mods that can be rolled with the currency you choose, and how different combinations of omens can help you to limit that pool to better achieve your goal.  
 If you would like to know more about the behaviour of a certain crafting step or combination, give me an example item, and which currency and omens you would like to use on it, and I will tell you.  
 
