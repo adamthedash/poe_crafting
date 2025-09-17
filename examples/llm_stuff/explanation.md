@@ -20,9 +20,9 @@ Transmute:
         Rarity Normal -> Magic  
         Adds 1 random modifier  
     Variants:  
-        Standard - Adds modifiers of any level  
-        Greater - Adds modifiers with a minimum level of 55  
-        Perfect - Adds modifiers with a minimum level of 70  
+        I - Adds modifiers of any level  
+        II - Adds modifiers with a minimum level of 55  
+        III - Adds modifiers with a minimum level of 70  
 Augmentation:  
     Usability constraints:  
         Item must be Magic rarity  

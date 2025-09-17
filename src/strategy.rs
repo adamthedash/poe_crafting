@@ -1,13 +1,13 @@
 use std::{
     collections::HashSet,
-    ops::{Range, RangeInclusive},
+    ops::RangeInclusive,
 };
 
 use crate::{
     MODS, TIERS,
     currency::CurrencyType,
     item_state::{ItemState, Rarity},
-    types::{Affix, ModGroup, OmenId, Tier},
+    types::{ModGroup, OmenId, Tier},
 };
 
 /// Eg. LocalAttackSpeed T2-T1
