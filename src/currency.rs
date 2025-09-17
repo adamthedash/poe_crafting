@@ -801,48 +801,48 @@ impl Currency for PerfectEssence {
 #[derive(Clone, Debug)]
 pub enum CurrencyType {
     Transmute,
+    GreaterTransmute,
+    PerfectTransmute,
     Augmentation,
+    GreaterAugmentation,
+    PerfectAugmentation,
     Regal,
+    GreaterRegal,
+    PerfectRegal,
     Exalt,
+    GreaterExalt,
+    PerfectExalt,
     Annulment,
     Alchemy,
     Chaos,
     GreaterChaos,
     PerfectChaos,
-    GreaterExalt,
-    PerfectExalt,
-    GreaterTransmute,
-    PerfectTransmute,
-    GreaterAugmentation,
-    PerfectAugmentation,
     Essence(Essence),
     PerfectEssence(PerfectEssence),
-    GreaterRegal,
-    PerfectRegal,
 }
 
 impl Currency for CurrencyType {
     fn name(&self) -> &str {
         match self {
             Self::Transmute => Transmute.name(),
+            Self::GreaterTransmute => GreaterTransmute.name(),
+            Self::PerfectTransmute => PerfectTransmute.name(),
             Self::Augmentation => Augmentation.name(),
+            Self::GreaterAugmentation => GreaterAugmentation.name(),
+            Self::PerfectAugmentation => PerfectAugmentation.name(),
             Self::Regal => Regal.name(),
+            Self::GreaterRegal => GreaterRegal.name(),
+            Self::PerfectRegal => PerfectRegal.name(),
             Self::Exalt => Exalt.name(),
+            Self::GreaterExalt => GreaterExalt.name(),
+            Self::PerfectExalt => PerfectExalt.name(),
             Self::Annulment => Annulment.name(),
             Self::Alchemy => Alchemy.name(),
             Self::Chaos => Chaos.name(),
             Self::GreaterChaos => GreaterChaos.name(),
             Self::PerfectChaos => PerfectChaos.name(),
-            Self::GreaterExalt => GreaterExalt.name(),
-            Self::PerfectExalt => PerfectExalt.name(),
-            Self::GreaterTransmute => GreaterTransmute.name(),
-            Self::PerfectTransmute => PerfectTransmute.name(),
-            Self::GreaterAugmentation => GreaterAugmentation.name(),
-            Self::PerfectAugmentation => PerfectAugmentation.name(),
             Self::Essence(essence) => essence.name(),
             Self::PerfectEssence(essence) => essence.name(),
-            Self::GreaterRegal => GreaterRegal.name(),
-            Self::PerfectRegal => PerfectRegal.name(),
         }
     }
 
@@ -854,52 +854,48 @@ impl Currency for CurrencyType {
     ) -> bool {
         match self {
             Self::Transmute => Transmute.can_be_used(item, candidate_tiers, omens),
+            Self::GreaterTransmute => GreaterTransmute.can_be_used(item, candidate_tiers, omens),
+            Self::PerfectTransmute => PerfectTransmute.can_be_used(item, candidate_tiers, omens),
             Self::Augmentation => Augmentation.can_be_used(item, candidate_tiers, omens),
+            Self::GreaterAugmentation => GreaterAugmentation.can_be_used(item, candidate_tiers, omens),
+            Self::PerfectAugmentation => PerfectAugmentation.can_be_used(item, candidate_tiers, omens),
             Self::Regal => Regal.can_be_used(item, candidate_tiers, omens),
+            Self::GreaterRegal => GreaterRegal.can_be_used(item, candidate_tiers, omens),
+            Self::PerfectRegal => PerfectRegal.can_be_used(item, candidate_tiers, omens),
             Self::Exalt => Exalt.can_be_used(item, candidate_tiers, omens),
+            Self::GreaterExalt => GreaterExalt.can_be_used(item, candidate_tiers, omens),
+            Self::PerfectExalt => PerfectExalt.can_be_used(item, candidate_tiers, omens),
             Self::Annulment => Annulment.can_be_used(item, candidate_tiers, omens),
             Self::Alchemy => Alchemy.can_be_used(item, candidate_tiers, omens),
             Self::Chaos => Chaos.can_be_used(item, candidate_tiers, omens),
             Self::GreaterChaos => GreaterChaos.can_be_used(item, candidate_tiers, omens),
             Self::PerfectChaos => PerfectChaos.can_be_used(item, candidate_tiers, omens),
-            Self::GreaterExalt => GreaterExalt.can_be_used(item, candidate_tiers, omens),
-            Self::PerfectExalt => PerfectExalt.can_be_used(item, candidate_tiers, omens),
-            Self::GreaterTransmute => GreaterTransmute.can_be_used(item, candidate_tiers, omens),
-            Self::PerfectTransmute => PerfectTransmute.can_be_used(item, candidate_tiers, omens),
-            Self::GreaterAugmentation => {
-                GreaterAugmentation.can_be_used(item, candidate_tiers, omens)
-            }
-            Self::PerfectAugmentation => {
-                PerfectAugmentation.can_be_used(item, candidate_tiers, omens)
-            }
             Self::Essence(essence) => essence.can_be_used(item, candidate_tiers, omens),
             Self::PerfectEssence(essence) => essence.can_be_used(item, candidate_tiers, omens),
-            Self::GreaterRegal => Regal.can_be_used(item, candidate_tiers, omens),
-            Self::PerfectRegal => Regal.can_be_used(item, candidate_tiers, omens),
         }
     }
 
     fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
         match self {
             Self::Transmute => Transmute.craft(item, candidate_tiers, omens),
+            Self::GreaterTransmute => GreaterTransmute.craft(item, candidate_tiers, omens),
+            Self::PerfectTransmute => PerfectTransmute.craft(item, candidate_tiers, omens),
             Self::Augmentation => Augmentation.craft(item, candidate_tiers, omens),
+            Self::GreaterAugmentation => GreaterAugmentation.craft(item, candidate_tiers, omens),
+            Self::PerfectAugmentation => PerfectAugmentation.craft(item, candidate_tiers, omens),
             Self::Regal => Regal.craft(item, candidate_tiers, omens),
+            Self::GreaterRegal => GreaterRegal.craft(item, candidate_tiers, omens),
+            Self::PerfectRegal => PerfectRegal.craft(item, candidate_tiers, omens),
             Self::Exalt => Exalt.craft(item, candidate_tiers, omens),
+            Self::GreaterExalt => GreaterExalt.craft(item, candidate_tiers, omens),
+            Self::PerfectExalt => PerfectExalt.craft(item, candidate_tiers, omens),
             Self::Annulment => Annulment.craft(item, candidate_tiers, omens),
             Self::Alchemy => Alchemy.craft(item, candidate_tiers, omens),
             Self::Chaos => Chaos.craft(item, candidate_tiers, omens),
             Self::GreaterChaos => GreaterChaos.craft(item, candidate_tiers, omens),
             Self::PerfectChaos => PerfectChaos.craft(item, candidate_tiers, omens),
-            Self::GreaterExalt => GreaterExalt.craft(item, candidate_tiers, omens),
-            Self::PerfectExalt => PerfectExalt.craft(item, candidate_tiers, omens),
-            Self::GreaterTransmute => GreaterTransmute.craft(item, candidate_tiers, omens),
-            Self::PerfectTransmute => PerfectTransmute.craft(item, candidate_tiers, omens),
-            Self::GreaterAugmentation => GreaterAugmentation.craft(item, candidate_tiers, omens),
-            Self::PerfectAugmentation => PerfectAugmentation.craft(item, candidate_tiers, omens),
             Self::Essence(essence) => essence.craft(item, candidate_tiers, omens),
             Self::PerfectEssence(essence) => essence.craft(item, candidate_tiers, omens),
-            Self::GreaterRegal => GreaterRegal.craft(item, candidate_tiers, omens),
-            Self::PerfectRegal => PerfectRegal.craft(item, candidate_tiers, omens),
         }
     }
 }
@@ -926,21 +922,29 @@ impl CurrencyType {
 pub static CURRENCIES: LazyLock<Vec<CurrencyType>> = LazyLock::new(|| {
     vec![
         CurrencyType::Transmute,
+        CurrencyType::GreaterTransmute,
+        CurrencyType::PerfectTransmute,
         CurrencyType::Augmentation,
+        CurrencyType::GreaterAugmentation,
+        CurrencyType::PerfectAugmentation,
         CurrencyType::Regal,
+        CurrencyType::GreaterRegal,
+        CurrencyType::PerfectRegal,
         CurrencyType::Exalt,
+        CurrencyType::GreaterExalt,
+        CurrencyType::PerfectExalt,
         CurrencyType::Annulment,
         CurrencyType::Alchemy,
         CurrencyType::Chaos,
         CurrencyType::GreaterChaos,
         CurrencyType::PerfectChaos,
-        CurrencyType::GreaterExalt,
-        CurrencyType::PerfectExalt,
-        CurrencyType::GreaterTransmute,
-        CurrencyType::PerfectTransmute,
-        CurrencyType::GreaterAugmentation,
-        CurrencyType::PerfectAugmentation,
-        CurrencyType::GreaterRegal,
-        CurrencyType::PerfectRegal,
+        CurrencyType::Essence(Essence {
+            name: "Essence of Anger".to_string(),
+            tiers: HashMap::new(),
+        }),
+        CurrencyType::PerfectEssence(PerfectEssence {
+            name: "Perfect Essence of Anger".to_string(),
+            tiers: HashMap::new(),
+        }),
     ]
 });
