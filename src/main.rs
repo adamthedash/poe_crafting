@@ -6,7 +6,7 @@ use std::{
 };
 
 use eframe::egui;
-use egui::{Align, Checkbox, ComboBox, DragValue, Grid, Layout};
+use egui::{Align, Checkbox, ComboBox, DragValue, Grid, Layout, ScrollArea};
 use itertools::Itertools;
 use poe_crafting::{
     ESSENCES, ITEM_TIERS, MODS, TIERS,
@@ -36,6 +36,7 @@ enum Page {
         selected_currency: usize,
         selected_omens: HashSet<OmenId>,
         simulation_state: Option<SimState>,
+        num_iters_exp: u32,
     },
 }
 
@@ -49,6 +50,7 @@ impl Page {
                 selected_currency: 0,
                 selected_omens: HashSet::new(),
                 simulation_state: None,
+                num_iters_exp: 2,
             },
         ]
     }
@@ -279,6 +281,7 @@ impl MyEguiApp {
             selected_currency,
             selected_omens,
             simulation_state,
+            num_iters_exp,
         } = &mut self.page
         else {
             unreachable!()
@@ -356,6 +359,14 @@ impl MyEguiApp {
                 }
             });
 
+            // 10^N iterations
+            ui.add(
+                DragValue::new(num_iters_exp)
+                    .range(0..=10)
+                    .custom_formatter(|n, _| format!("{:?}", 10_u64.pow(n as u32))),
+            );
+            let n = 10_u64.pow(*num_iters_exp);
+
             // Simulation
             if ui.button("Go!").clicked() {
                 let status = Arc::new(Mutex::new(SimStatus::Running { iterations_done: 0 }));
@@ -371,7 +382,7 @@ impl MyEguiApp {
                         move || {
                             let mut results = HashMap::<_, usize>::new();
                             let before_mods = base_item.mods.iter().collect::<HashSet<_>>();
-                            for _ in 0..1000 {
+                            for _ in 0..n {
                                 // Apply the currency
                                 let mut item = base_item.clone();
                                 currency.craft(&mut item, &candidate_tiers, &selected_omens);
@@ -411,41 +422,47 @@ impl MyEguiApp {
                             })
                             .chunk_by(|(tier, _)| tier.affix);
 
-                        for (affix, mod_group) in &affix_groups {
-                            ui.heading(format!("{:?}", affix));
-                            Grid::new(format!("results_grid_{:?}", affix))
-                                .num_columns(2)
-                                .show(ui, |ui| {
-                                    for (mod_id, group) in
-                                        &mod_group.chunk_by(|(tier, _)| &tier.mod_id)
-                                    {
-                                        ui.label(mod_id);
+                        ScrollArea::new([false, true]).show(ui, |ui| {
+                            for (affix, mod_group) in &affix_groups {
+                                ui.heading(format!("{:?}", affix));
+                                Grid::new(format!("results_grid_{:?}", affix))
+                                    .num_columns(2)
+                                    .show(ui, |ui| {
+                                        for (mod_id, group) in
+                                            &mod_group.chunk_by(|(tier, _)| &tier.mod_id)
+                                        {
+                                            ui.label(mod_id);
 
-                                        let tier_counts = group.collect::<Vec<_>>();
-                                        Grid::new(format!("results_grid_{}", mod_id))
-                                            .num_columns(tier_counts.len())
-                                            .show(ui, |ui| {
-                                                tier_counts.iter().for_each(|(tier, _)| {
-                                                    ui.label(format!("{}", tier.ilvl));
+                                            let tier_counts = group.collect::<Vec<_>>();
+                                            Grid::new(format!("results_grid_{}", mod_id))
+                                                .num_columns(tier_counts.len())
+                                                .show(ui, |ui| {
+                                                    // Ilvls on top row
+                                                    tier_counts.iter().for_each(|(tier, _)| {
+                                                        ui.label(format!("{}", tier.ilvl));
+                                                    });
+                                                    ui.end_row();
+
+                                                    // Roll % on bottom row
+                                                    tier_counts.into_iter().for_each(
+                                                        |(_, count)| {
+                                                            ui.label(format!(
+                                                                "{:.1}%",
+                                                                (*count as f32 / n as f32) * 100.
+                                                            ));
+                                                        },
+                                                    );
                                                 });
-                                                ui.end_row();
 
-                                                tier_counts.into_iter().for_each(|(_, count)| {
-                                                    ui.label(format!(
-                                                        "{:.1}%",
-                                                        (*count as f32 / 1000.) * 100.
-                                                    ));
-                                                });
-                                            });
-
-                                        ui.end_row();
-                                    }
-                                });
-                        }
+                                            ui.end_row();
+                                        }
+                                    });
+                            }
+                        });
                     }
                     SimStatus::Running { iterations_done } => {
                         ui.spinner();
-                        ui.label(format!("{} / {}", iterations_done, 1000));
+                        ui.label(format!("{} / {}", iterations_done, n));
                     }
                 }
             }
