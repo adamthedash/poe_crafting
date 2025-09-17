@@ -841,8 +841,8 @@ impl Currency for CurrencyType {
             Self::PerfectAugmentation => PerfectAugmentation.name(),
             Self::Essence(essence) => essence.name(),
             Self::PerfectEssence(essence) => essence.name(),
-            Self::GreaterRegal => Regal.name(),
-            Self::PerfectRegal => Regal.name(),
+            Self::GreaterRegal => GreaterRegal.name(),
+            Self::PerfectRegal => PerfectRegal.name(),
         }
     }
 
