@@ -26,21 +26,12 @@ pub fn roll_mod(candidate_tiers: &[TierId]) -> TierId {
     (**choice).clone()
 }
 
-/// Filter mods which can roll using a "Perfect" currency
-pub fn filter_perfect(candidate_tiers: &[TierId]) -> Vec<TierId> {
-    filter_better_currency(candidate_tiers, 50)
-}
-/// Filter mods which can roll using a "Greater" currency
-pub fn filter_greater(candidate_tiers: &[TierId]) -> Vec<TierId> {
-    filter_better_currency(candidate_tiers, 35)
-}
-
 /// Minimum Modifier Level: Added random modifiers are at least this level or higher,
 /// except if a specific modifier type would be excluded entirely from being able to roll.
 /// In other words, at least one tier of each mod will always be eligible to roll, respecting item level.
 /// For example, if all tiers of a type of a modifier would be excluded, and the highest modifier tier
 /// is below Level 35 (e.g. Light Radius), the highest tier of Light Radius (requiring Level 30) would still be able to roll.
-fn filter_better_currency(candidate_tiers: &[TierId], min_ilvl: u32) -> Vec<TierId> {
+pub fn filter_better_currency(candidate_tiers: &[TierId], min_ilvl: u32) -> Vec<TierId> {
     let tiers = TIERS.get().unwrap();
 
     let mut candidate_tiers = candidate_tiers

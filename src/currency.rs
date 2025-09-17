@@ -4,8 +4,7 @@ use std::sync::LazyLock;
 use random_choice::random_choice;
 
 use crate::crafting::{
-    filter_affix, filter_greater, filter_lowest_tier, filter_out_families, filter_perfect,
-    filter_tags,
+    filter_affix, filter_better_currency, filter_lowest_tier, filter_out_families, filter_tags,
 };
 use crate::types::{Affix, BaseItemId};
 use crate::{
@@ -138,7 +137,7 @@ impl Currency for GreaterRegal {
     }
 
     fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
-        let candidate_tiers = filter_greater(candidate_tiers);
+        let candidate_tiers = filter_better_currency(candidate_tiers, 35);
         Regal.craft(item, &candidate_tiers, omens);
     }
 }
@@ -159,7 +158,7 @@ impl Currency for PerfectRegal {
     }
 
     fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
-        let candidate_tiers = filter_perfect(candidate_tiers);
+        let candidate_tiers = filter_better_currency(candidate_tiers, 50);
         Regal.craft(item, &candidate_tiers, omens);
     }
 }
@@ -450,7 +449,7 @@ impl Currency for GreaterChaos {
     }
 
     fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
-        let candidate_tiers = filter_greater(candidate_tiers);
+        let candidate_tiers = filter_better_currency(candidate_tiers, 35);
         Chaos.craft(item, &candidate_tiers, omens);
     }
 }
@@ -471,7 +470,7 @@ impl Currency for PerfectChaos {
     }
 
     fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
-        let candidate_tiers = filter_perfect(candidate_tiers);
+        let candidate_tiers = filter_better_currency(candidate_tiers, 50);
         Chaos.craft(item, &candidate_tiers, omens);
     }
 }
@@ -492,7 +491,7 @@ impl Currency for GreaterExalt {
     }
 
     fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
-        let candidate_tiers = filter_greater(candidate_tiers);
+        let candidate_tiers = filter_better_currency(candidate_tiers, 35);
         Exalt.craft(item, &candidate_tiers, omens);
     }
 }
@@ -513,7 +512,7 @@ impl Currency for PerfectExalt {
     }
 
     fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
-        let candidate_tiers = filter_perfect(candidate_tiers);
+        let candidate_tiers = filter_better_currency(candidate_tiers, 50);
         Exalt.craft(item, &candidate_tiers, omens);
     }
 }
@@ -534,7 +533,7 @@ impl Currency for GreaterTransmute {
     }
 
     fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
-        let candidate_tiers = filter_greater(candidate_tiers);
+        let candidate_tiers = filter_better_currency(candidate_tiers, 35);
         Transmute.craft(item, &candidate_tiers, omens);
     }
 }
@@ -555,7 +554,7 @@ impl Currency for PerfectTransmute {
     }
 
     fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
-        let candidate_tiers = filter_perfect(candidate_tiers);
+        let candidate_tiers = filter_better_currency(candidate_tiers, 50);
         Transmute.craft(item, &candidate_tiers, omens);
     }
 }
@@ -576,7 +575,7 @@ impl Currency for GreaterAugmentation {
     }
 
     fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
-        let candidate_tiers = filter_greater(candidate_tiers);
+        let candidate_tiers = filter_better_currency(candidate_tiers, 35);
         Augmentation.craft(item, &candidate_tiers, omens);
     }
 }
@@ -597,7 +596,7 @@ impl Currency for PerfectAugmentation {
     }
 
     fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
-        let candidate_tiers = filter_perfect(candidate_tiers);
+        let candidate_tiers = filter_better_currency(candidate_tiers, 50);
         Augmentation.craft(item, &candidate_tiers, omens);
     }
 }
