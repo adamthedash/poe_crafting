@@ -67,7 +67,7 @@ impl Currency for GreaterTransmute {
     }
 
     fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
-        let candidate_tiers = filter_better_currency(candidate_tiers, 35);
+        let candidate_tiers = filter_better_currency(candidate_tiers, 55);
         Transmute.craft(item, &candidate_tiers, omens);
     }
 }
@@ -88,7 +88,7 @@ impl Currency for PerfectTransmute {
     }
 
     fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
-        let candidate_tiers = filter_better_currency(candidate_tiers, 50);
+        let candidate_tiers = filter_better_currency(candidate_tiers, 70);
         Transmute.craft(item, &candidate_tiers, omens);
     }
 }
@@ -153,7 +153,7 @@ impl Currency for GreaterAugmentation {
     }
 
     fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
-        let candidate_tiers = filter_better_currency(candidate_tiers, 35);
+        let candidate_tiers = filter_better_currency(candidate_tiers, 55);
         Augmentation.craft(item, &candidate_tiers, omens);
     }
 }
@@ -174,7 +174,7 @@ impl Currency for PerfectAugmentation {
     }
 
     fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
-        let candidate_tiers = filter_better_currency(candidate_tiers, 50);
+        let candidate_tiers = filter_better_currency(candidate_tiers, 70);
         Augmentation.craft(item, &candidate_tiers, omens);
     }
 }
