@@ -857,8 +857,12 @@ impl Currency for CurrencyType {
             Self::GreaterTransmute => GreaterTransmute.can_be_used(item, candidate_tiers, omens),
             Self::PerfectTransmute => PerfectTransmute.can_be_used(item, candidate_tiers, omens),
             Self::Augmentation => Augmentation.can_be_used(item, candidate_tiers, omens),
-            Self::GreaterAugmentation => GreaterAugmentation.can_be_used(item, candidate_tiers, omens),
-            Self::PerfectAugmentation => PerfectAugmentation.can_be_used(item, candidate_tiers, omens),
+            Self::GreaterAugmentation => {
+                GreaterAugmentation.can_be_used(item, candidate_tiers, omens)
+            }
+            Self::PerfectAugmentation => {
+                PerfectAugmentation.can_be_used(item, candidate_tiers, omens)
+            }
             Self::Regal => Regal.can_be_used(item, candidate_tiers, omens),
             Self::GreaterRegal => GreaterRegal.can_be_used(item, candidate_tiers, omens),
             Self::PerfectRegal => PerfectRegal.can_be_used(item, candidate_tiers, omens),
@@ -938,13 +942,5 @@ pub static CURRENCIES: LazyLock<Vec<CurrencyType>> = LazyLock::new(|| {
         CurrencyType::Chaos,
         CurrencyType::GreaterChaos,
         CurrencyType::PerfectChaos,
-        CurrencyType::Essence(Essence {
-            name: "Essence of Anger".to_string(),
-            tiers: HashMap::new(),
-        }),
-        CurrencyType::PerfectEssence(PerfectEssence {
-            name: "Perfect Essence of Anger".to_string(),
-            tiers: HashMap::new(),
-        }),
     ]
 });

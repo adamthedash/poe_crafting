@@ -200,7 +200,11 @@ pub fn load_essences(dats: &Dats) -> Vec<CurrencyType> {
             // essencemods.Essence -> essences.BaseItemType -> baseitemtypes.Name
             let name = &dats.base_item_types[dats.essences[essence_index].BaseItemType].Name;
 
-            if name.starts_with("Perfect") {
+            let special_essences = ["Insanity", "Hysteria", "Horror", "Delirium", "Abyss"];
+
+            if name.starts_with("Perfect")
+                | special_essences.iter().any(|suffix| name.ends_with(suffix))
+            {
                 CurrencyType::PerfectEssence(PerfectEssence {
                     name: name.clone(),
                     tiers: base_mods,
