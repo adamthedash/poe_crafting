@@ -51,6 +51,48 @@ impl Currency for Transmute {
     }
 }
 
+pub struct GreaterTransmute;
+impl Currency for GreaterTransmute {
+    fn name(&self) -> &str {
+        "Greater Transmute"
+    }
+
+    fn can_be_used(
+        &self,
+        item: &ItemState,
+        candidate_tiers: &[TierId],
+        omens: &HashSet<OmenId>,
+    ) -> bool {
+        Transmute.can_be_used(item, candidate_tiers, omens)
+    }
+
+    fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
+        let candidate_tiers = filter_better_currency(candidate_tiers, 35);
+        Transmute.craft(item, &candidate_tiers, omens);
+    }
+}
+
+pub struct PerfectTransmute;
+impl Currency for PerfectTransmute {
+    fn name(&self) -> &str {
+        "Perfect Transmute"
+    }
+
+    fn can_be_used(
+        &self,
+        item: &ItemState,
+        candidate_tiers: &[TierId],
+        omens: &HashSet<OmenId>,
+    ) -> bool {
+        Transmute.can_be_used(item, candidate_tiers, omens)
+    }
+
+    fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
+        let candidate_tiers = filter_better_currency(candidate_tiers, 50);
+        Transmute.craft(item, &candidate_tiers, omens);
+    }
+}
+
 pub struct Augmentation;
 impl Currency for Augmentation {
     fn name(&self) -> &str {
@@ -92,6 +134,48 @@ impl Currency for Augmentation {
         let choice = *random_choice().random_choice_f32(&candidate_tiers, &weights, 1)[0];
 
         item.mods.push(choice.clone());
+    }
+}
+
+pub struct GreaterAugmentation;
+impl Currency for GreaterAugmentation {
+    fn name(&self) -> &str {
+        "Greater Augmentation"
+    }
+
+    fn can_be_used(
+        &self,
+        item: &ItemState,
+        candidate_tiers: &[TierId],
+        omens: &HashSet<OmenId>,
+    ) -> bool {
+        Augmentation.can_be_used(item, candidate_tiers, omens)
+    }
+
+    fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
+        let candidate_tiers = filter_better_currency(candidate_tiers, 35);
+        Augmentation.craft(item, &candidate_tiers, omens);
+    }
+}
+
+pub struct PerfectAugmentation;
+impl Currency for PerfectAugmentation {
+    fn name(&self) -> &str {
+        "Perfect Augmentation"
+    }
+
+    fn can_be_used(
+        &self,
+        item: &ItemState,
+        candidate_tiers: &[TierId],
+        omens: &HashSet<OmenId>,
+    ) -> bool {
+        Augmentation.can_be_used(item, candidate_tiers, omens)
+    }
+
+    fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
+        let candidate_tiers = filter_better_currency(candidate_tiers, 50);
+        Augmentation.craft(item, &candidate_tiers, omens);
     }
 }
 
@@ -305,6 +389,48 @@ impl Exalt {
     }
 }
 
+pub struct GreaterExalt;
+impl Currency for GreaterExalt {
+    fn name(&self) -> &str {
+        "Greater Exalt"
+    }
+
+    fn can_be_used(
+        &self,
+        item: &ItemState,
+        candidate_tiers: &[TierId],
+        omens: &HashSet<OmenId>,
+    ) -> bool {
+        Exalt.can_be_used(item, candidate_tiers, omens)
+    }
+
+    fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
+        let candidate_tiers = filter_better_currency(candidate_tiers, 35);
+        Exalt.craft(item, &candidate_tiers, omens);
+    }
+}
+
+pub struct PerfectExalt;
+impl Currency for PerfectExalt {
+    fn name(&self) -> &str {
+        "Perfect Exalt"
+    }
+
+    fn can_be_used(
+        &self,
+        item: &ItemState,
+        candidate_tiers: &[TierId],
+        omens: &HashSet<OmenId>,
+    ) -> bool {
+        Exalt.can_be_used(item, candidate_tiers, omens)
+    }
+
+    fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
+        let candidate_tiers = filter_better_currency(candidate_tiers, 50);
+        Exalt.craft(item, &candidate_tiers, omens);
+    }
+}
+
 pub struct Annulment;
 impl Currency for Annulment {
     fn name(&self) -> &str {
@@ -472,132 +598,6 @@ impl Currency for PerfectChaos {
     fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
         let candidate_tiers = filter_better_currency(candidate_tiers, 50);
         Chaos.craft(item, &candidate_tiers, omens);
-    }
-}
-
-pub struct GreaterExalt;
-impl Currency for GreaterExalt {
-    fn name(&self) -> &str {
-        "Greater Exalt"
-    }
-
-    fn can_be_used(
-        &self,
-        item: &ItemState,
-        candidate_tiers: &[TierId],
-        omens: &HashSet<OmenId>,
-    ) -> bool {
-        Exalt.can_be_used(item, candidate_tiers, omens)
-    }
-
-    fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
-        let candidate_tiers = filter_better_currency(candidate_tiers, 35);
-        Exalt.craft(item, &candidate_tiers, omens);
-    }
-}
-
-pub struct PerfectExalt;
-impl Currency for PerfectExalt {
-    fn name(&self) -> &str {
-        "Perfect Exalt"
-    }
-
-    fn can_be_used(
-        &self,
-        item: &ItemState,
-        candidate_tiers: &[TierId],
-        omens: &HashSet<OmenId>,
-    ) -> bool {
-        Exalt.can_be_used(item, candidate_tiers, omens)
-    }
-
-    fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
-        let candidate_tiers = filter_better_currency(candidate_tiers, 50);
-        Exalt.craft(item, &candidate_tiers, omens);
-    }
-}
-
-pub struct GreaterTransmute;
-impl Currency for GreaterTransmute {
-    fn name(&self) -> &str {
-        "Greater Transmute"
-    }
-
-    fn can_be_used(
-        &self,
-        item: &ItemState,
-        candidate_tiers: &[TierId],
-        omens: &HashSet<OmenId>,
-    ) -> bool {
-        Transmute.can_be_used(item, candidate_tiers, omens)
-    }
-
-    fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
-        let candidate_tiers = filter_better_currency(candidate_tiers, 35);
-        Transmute.craft(item, &candidate_tiers, omens);
-    }
-}
-
-pub struct PerfectTransmute;
-impl Currency for PerfectTransmute {
-    fn name(&self) -> &str {
-        "Perfect Transmute"
-    }
-
-    fn can_be_used(
-        &self,
-        item: &ItemState,
-        candidate_tiers: &[TierId],
-        omens: &HashSet<OmenId>,
-    ) -> bool {
-        Transmute.can_be_used(item, candidate_tiers, omens)
-    }
-
-    fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
-        let candidate_tiers = filter_better_currency(candidate_tiers, 50);
-        Transmute.craft(item, &candidate_tiers, omens);
-    }
-}
-
-pub struct GreaterAugmentation;
-impl Currency for GreaterAugmentation {
-    fn name(&self) -> &str {
-        "Greater Augmentation"
-    }
-
-    fn can_be_used(
-        &self,
-        item: &ItemState,
-        candidate_tiers: &[TierId],
-        omens: &HashSet<OmenId>,
-    ) -> bool {
-        Augmentation.can_be_used(item, candidate_tiers, omens)
-    }
-
-    fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
-        let candidate_tiers = filter_better_currency(candidate_tiers, 35);
-        Augmentation.craft(item, &candidate_tiers, omens);
-    }
-}
-
-pub struct PerfectAugmentation;
-impl Currency for PerfectAugmentation {
-    fn name(&self) -> &str {
-        "Perfect Augmentation"
-    }
-
-    fn can_be_used(
-        &self,
-        item: &ItemState,
-        candidate_tiers: &[TierId],
-        omens: &HashSet<OmenId>,
-    ) -> bool {
-        Augmentation.can_be_used(item, candidate_tiers, omens)
-    }
-
-    fn craft(&self, item: &mut ItemState, candidate_tiers: &[TierId], omens: &HashSet<OmenId>) {
-        let candidate_tiers = filter_better_currency(candidate_tiers, 50);
-        Augmentation.craft(item, &candidate_tiers, omens);
     }
 }
 
