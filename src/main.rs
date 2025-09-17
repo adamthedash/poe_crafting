@@ -1,25 +1,63 @@
-use std::path::Path;
+use std::{
+    collections::{HashMap, HashSet},
+    path::Path,
+    sync::{Arc, Mutex},
+    thread::{self, JoinHandle},
+};
 
 use eframe::egui;
-use egui::{Align, Button, Checkbox, Color32, ComboBox, DragValue, Frame, Grid, Layout};
+use egui::{Align, Checkbox, ComboBox, DragValue, Grid, Layout};
 use itertools::Itertools;
 use poe_crafting::{
-    ITEM_TIERS, MODS, TIERS, init,
+    ESSENCES, ITEM_TIERS, MODS, TIERS,
+    currency::{CURRENCIES, Currency},
+    init,
     item_state::{ItemState, Rarity, get_valid_mods_for_item},
-    types::Affix,
+    types::{Affix, OmenId, TierId},
 };
+
+#[derive(Debug)]
+enum SimStatus {
+    Done { results: HashMap<TierId, usize> },
+    Running { iterations_done: usize },
+}
+
+#[derive(Debug)]
+struct SimState {
+    base_item: ItemState,
+    status: Arc<Mutex<SimStatus>>,
+    handle: JoinHandle<()>,
+}
 
 #[derive(Debug)]
 enum Page {
     ItemBuilder,
-    CraftProbability,
+    CraftProbability {
+        selected_currency: usize,
+        selected_omens: HashSet<OmenId>,
+        simulation_state: Option<SimState>,
+    },
 }
 
 impl Page {
-    const fn all() -> [Self; 2] {
+    fn all() -> Vec<Self> {
         use Page::*;
 
-        [ItemBuilder, CraftProbability]
+        vec![
+            ItemBuilder,
+            CraftProbability {
+                selected_currency: 0,
+                selected_omens: HashSet::new(),
+                simulation_state: None,
+            },
+        ]
+    }
+
+    fn name(&self) -> &str {
+        match self {
+            Page::ItemBuilder => "Item Builder",
+            Page::CraftProbability { .. } => "Craft Probabilities",
+        }
     }
 }
 
@@ -61,7 +99,7 @@ impl eframe::App for MyEguiApp {
         egui::TopBottomPanel::top("header").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 for page in Page::all() {
-                    if ui.button(format!("{:?}", page)).clicked() {
+                    if ui.button(page.name()).clicked() {
                         self.page = page;
                     }
                 }
@@ -70,7 +108,7 @@ impl eframe::App for MyEguiApp {
 
         match self.page {
             Page::ItemBuilder => self.item_builder(ctx),
-            Page::CraftProbability => self.craft_probability(ctx),
+            Page::CraftProbability { .. } => self.craft_probability(ctx),
         }
     }
 }
@@ -235,10 +273,184 @@ impl MyEguiApp {
     }
 
     /// Show the outcome distributions when crafting on a given item
-    fn craft_probability(&self, ctx: &egui::Context) {
+    fn craft_probability(&mut self, ctx: &egui::Context) {
+        // Unpack state variables
+        let Page::CraftProbability {
+            selected_currency,
+            selected_omens,
+            simulation_state,
+        } = &mut self.page
+        else {
+            unreachable!()
+        };
+
         let item_tiers = ITEM_TIERS.get().unwrap();
         let tiers = TIERS.get().unwrap();
         let mods = MODS.get().unwrap();
+
+        let candidate_tiers = get_valid_mods_for_item(&self.base_item);
+
+        let currencies = CURRENCIES
+            .iter()
+            .chain(ESSENCES.get().unwrap().iter().sorted_unstable_by_key(|e| {
+                let name = e.name();
+                let sort = match name.split(" ").next().unwrap() {
+                    "Lesser" => 0,
+                    "Essence" => 1,
+                    "Greater" => 2,
+                    "Perfect" => 3,
+                    _ => 4,
+                };
+                (sort, name)
+            }))
+            .filter(|c| c.can_be_used(&self.base_item, &candidate_tiers, &HashSet::new()))
+            .collect::<Vec<_>>();
+
+        egui::CentralPanel::default().show(ctx, |ui| {
+            // Select Currency
+            let old_selected = *selected_currency;
+            ComboBox::from_id_salt("currency_select").show_index(
+                ui,
+                selected_currency,
+                currencies.len(),
+                |i| currencies[i].name(),
+            );
+            let currency = currencies[*selected_currency];
+            if old_selected != *selected_currency {
+                // Currency changed, clear omens
+                selected_omens.clear();
+            }
+
+            // Select Omens
+            let mut omens = currency
+                .possible_omens()
+                .into_iter()
+                // Only omens that can be used
+                .filter(|omen| {
+                    currency.can_be_used(
+                        &self.base_item,
+                        &candidate_tiers,
+                        &HashSet::from_iter(std::iter::once(omen.clone())),
+                    )
+                })
+                .collect::<Vec<_>>();
+            omens.sort();
+
+            ui.horizontal(|ui| {
+                for omen_id in omens {
+                    // Individual omen buttons
+                    let mut selected = selected_omens.contains(&omen_id);
+                    let old_selected = selected;
+                    ui.checkbox(&mut selected, &omen_id);
+                    match (old_selected, selected) {
+                        (true, false) => {
+                            // Un-selected
+                            selected_omens.remove(&omen_id);
+                        }
+                        (false, true) => {
+                            // Selected
+                            selected_omens.insert(omen_id.clone());
+                        }
+                        _ => (),
+                    }
+                }
+            });
+
+            // Simulation
+            if ui.button("Go!").clicked() {
+                let status = Arc::new(Mutex::new(SimStatus::Running { iterations_done: 0 }));
+                let state = SimState {
+                    base_item: self.base_item.clone(),
+                    status: status.clone(),
+                    handle: thread::spawn({
+                        let base_item = self.base_item.clone();
+                        let currency = currency.clone();
+                        let candidate_tiers = candidate_tiers.clone();
+                        let selected_omens = selected_omens.clone();
+
+                        move || {
+                            let mut results = HashMap::<_, usize>::new();
+                            let before_mods = base_item.mods.iter().collect::<HashSet<_>>();
+                            for _ in 0..1000 {
+                                // Apply the currency
+                                let mut item = base_item.clone();
+                                currency.craft(&mut item, &candidate_tiers, &selected_omens);
+
+                                // Figure out which mod was added
+                                let after_mods = item.mods.iter().collect::<HashSet<_>>();
+                                let added = after_mods.difference(&before_mods);
+                                for tier_id in added {
+                                    *results.entry((*tier_id).clone()).or_default() += 1;
+                                }
+
+                                // Update status
+                                let mut status = status.lock().unwrap();
+                                let SimStatus::Running { iterations_done } = &mut *status else {
+                                    unreachable!();
+                                };
+                                *iterations_done += 1;
+                            }
+
+                            // Give the results back
+                            let mut status = status.lock().unwrap();
+                            *status = SimStatus::Done { results };
+                        }
+                    }),
+                };
+                *simulation_state = Some(state);
+            }
+
+            if let Some(sim_state) = simulation_state {
+                match &*sim_state.status.lock().unwrap() {
+                    SimStatus::Done { results } => {
+                        let affix_groups = results
+                            .iter()
+                            .map(|(tier_id, count)| (&tiers[tier_id], count))
+                            .sorted_unstable_by_key(|(tier, _)| {
+                                (tier.affix, &tier.mod_id, tier.ilvl)
+                            })
+                            .chunk_by(|(tier, _)| tier.affix);
+
+                        for (affix, mod_group) in &affix_groups {
+                            ui.heading(format!("{:?}", affix));
+                            Grid::new(format!("results_grid_{:?}", affix))
+                                .num_columns(2)
+                                .show(ui, |ui| {
+                                    for (mod_id, group) in
+                                        &mod_group.chunk_by(|(tier, _)| &tier.mod_id)
+                                    {
+                                        ui.label(mod_id);
+
+                                        let tier_counts = group.collect::<Vec<_>>();
+                                        Grid::new(format!("results_grid_{}", mod_id))
+                                            .num_columns(tier_counts.len())
+                                            .show(ui, |ui| {
+                                                tier_counts.iter().for_each(|(tier, _)| {
+                                                    ui.label(format!("{}", tier.ilvl));
+                                                });
+                                                ui.end_row();
+
+                                                tier_counts.into_iter().for_each(|(_, count)| {
+                                                    ui.label(format!(
+                                                        "{:.1}%",
+                                                        (*count as f32 / 1000.) * 100.
+                                                    ));
+                                                });
+                                            });
+
+                                        ui.end_row();
+                                    }
+                                });
+                        }
+                    }
+                    SimStatus::Running { iterations_done } => {
+                        ui.spinner();
+                        ui.label(format!("{} / {}", iterations_done, 1000));
+                    }
+                }
+            }
+            ui.label(format!("{:?}", simulation_state))
+        });
     }
 }
 
