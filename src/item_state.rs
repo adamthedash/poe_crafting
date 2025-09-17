@@ -37,6 +37,20 @@ impl ItemState {
             .count()
     }
 
+    /// Whether the item has room for a mod of the given type
+    pub fn has_room(&self, affix: Affix) -> bool {
+        let max_affixes = match self.rarity {
+            Rarity::Normal => 0,
+            Rarity::Magic => 1,
+            Rarity::Rare => 3,
+        };
+        match affix {
+            Affix::Prefix => self.num_prefixes() < max_affixes,
+            Affix::Suffix => self.num_suffixes() < max_affixes,
+            Affix::Corrupted => unreachable!(),
+        }
+    }
+
     /// Set of unique mod tags
     pub fn mod_tags(&self) -> HashSet<ModTag> {
         let tiers = TIERS.get().unwrap();
