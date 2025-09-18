@@ -6,6 +6,8 @@ use std::collections::{HashMap, HashSet};
 use regex::Regex;
 use serde::Deserialize;
 
+use crate::hashvec::OpaqueIndex;
+
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, PartialOrd, Ord)]
 pub enum Affix {
     Prefix,
@@ -14,7 +16,7 @@ pub enum Affix {
 }
 
 // Not sure if this is the best way to represent this
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ModType {
     Normal,
     Desecrated,
@@ -28,7 +30,7 @@ pub type ModFamily = String;
 pub type ModTag = String;
 
 /// Represents a family of modifiers
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Modifier {
     /// Eg. BaseLocalDefencesAndLife
     pub group: ModGroup,
@@ -45,13 +47,13 @@ pub struct Modifier {
 pub type TierId = String;
 
 /// A specific tier of a modifier
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Tier {
     pub id: TierId,
     /// Eg. of the Hare
     pub name: String,
     /// Link to parent modifier
-    pub mod_id: ModGroup,
+    pub mod_id: OpaqueIndex<Modifier>,
     /// Where this mod rolls
     pub affix: Affix,
     /// Minimum required ilvl
@@ -90,16 +92,16 @@ type ConflictingMods = Vec<HashSet<ModGroup>>;
 pub type ItemMods = HashMap<BaseItemId, Vec<TierId>>;
 
 /// How a stat is formatted in a specific situation
-/// TODO: formatters are identified by tuples of StatID's.
+/// TODO: formatters are identified by tuples of StatIDs.
 ///     Eg. min/max added damage mods
 ///
 /// Eg. gloves with hybrid es/accuracy and flat damage will be:
 ///     es/acc mod -> (es stat, acc stat) -> (es formatter, acc formatter)
 ///     flat mod -> (min stat, max stat) -> flat formatter
 ///
-///     Not sure if there's any weirder examples
-///     1) Attempt to look up by all [StatID]'s for a mod
-///     2) Fall back to 'looking up each StatID individually
+///     Not sure if theres any weirder examples
+///     1) Attempt to look up by all [StatID]s for a mod
+///     2) Fall back to looking up each StatID individually
 #[derive(Debug, Deserialize, Clone)]
 pub struct StatFormatter {
     /// When this formatter is applied

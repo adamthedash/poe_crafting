@@ -6,12 +6,14 @@ use std::{
 
 use crate::{
     currency::CurrencyType,
+    hashvec::HashVec,
     parser_dat::{Dats, load_essences, load_mod_tiers},
     types::{BaseItemId, ItemMods, ModGroup, Modifier, StatFormatters, Tier, TierId},
 };
 
 pub mod crafting;
 pub mod currency;
+pub mod hashvec;
 pub mod item_state;
 pub mod parser_coe;
 pub mod parser_dat;
@@ -21,10 +23,13 @@ pub mod strategy;
 pub mod types;
 
 pub static FORMATTERS: OnceLock<StatFormatters> = OnceLock::new();
-pub static TIERS: OnceLock<HashMap<TierId, Tier>> = OnceLock::new();
-pub static MODS: OnceLock<HashMap<ModGroup, Modifier>> = OnceLock::new();
+// pub static TIERS: OnceLock<HashMap<TierId, Tier>> = OnceLock::new();
+// pub static MODS: OnceLock<HashMap<ModGroup, Modifier>> = OnceLock::new();
 pub static ITEM_TIERS: OnceLock<ItemMods> = OnceLock::new();
 pub static ESSENCES: OnceLock<Vec<CurrencyType>> = OnceLock::new();
+
+pub static MODS_HV: OnceLock<HashVec<ModGroup, Modifier>> = OnceLock::new();
+pub static TIERS_HV: OnceLock<HashVec<TierId, Tier>> = OnceLock::new();
 
 /// Load all of the data
 pub fn init(data_root: &Path) {
@@ -69,13 +74,13 @@ pub fn init(data_root: &Path) {
     // Load ModGroup -> [Tier] LUT from dat files
     // Load ModGroup -> [Stat] LUT
     let (mut tiers, mod_stats) = load_mod_tiers(&dat_tables);
-    MODS.set(mod_stats).unwrap();
+    MODS_HV.set(mod_stats).unwrap();
 
     // Apply mod weights
-    for (mod_group, tier) in &mut tiers {
-        tier.weight = *tier_weights.get(mod_group).unwrap_or(&0);
-    }
-    TIERS.set(tiers).unwrap();
+    tiers.values_mut().for_each(|tier| {
+        tier.weight = *tier_weights.get(&tier.id).unwrap_or(&0);
+    });
+    TIERS_HV.set(tiers).unwrap();
     ESSENCES.set(load_essences(&dat_tables)).unwrap();
 
     // Load stat descriptions

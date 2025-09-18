@@ -1,19 +1,17 @@
-use std::{
-    collections::HashSet,
-    ops::RangeInclusive,
-};
+use std::{collections::HashSet, ops::RangeInclusive};
 
 use crate::{
-    MODS, TIERS,
+    TIERS_HV,
     currency::CurrencyType,
+    hashvec::OpaqueIndex,
     item_state::{ItemState, Rarity},
-    types::{ModGroup, OmenId, Tier},
+    types::{Modifier, OmenId, Tier},
 };
 
 /// Eg. LocalAttackSpeed T2-T1
 #[derive(Clone)]
 pub struct ModifierCondition {
-    pub mod_group: ModGroup,
+    pub mod_group: OpaqueIndex<Modifier>,
     pub levels: Vec<u32>,
 }
 
@@ -30,7 +28,7 @@ pub enum ConditionGroup {
         mods: Vec<ModifierCondition>,
     },
     /// None of these
-    Not(HashSet<ModGroup>),
+    Not(HashSet<OpaqueIndex<Modifier>>),
     AffixCount {
         suffixes: RangeInclusive<usize>,
         prefixes: RangeInclusive<usize>,
@@ -39,13 +37,12 @@ pub enum ConditionGroup {
 }
 impl ConditionGroup {
     pub fn check(&self, item: &ItemState) -> bool {
-        let tiers = TIERS.get().unwrap();
-        let mods = MODS.get().unwrap();
+        let tiers = TIERS_HV.get().unwrap();
 
         let item_tiers = item
             .mods
             .iter()
-            .map(|tier_id| &tiers[tier_id])
+            .map(|&tier_id| &tiers[tier_id])
             .collect::<Vec<_>>();
 
         match self {
@@ -60,8 +57,7 @@ impl ConditionGroup {
             ConditionGroup::Not(mod_groups) => {
                 let item_mod_groups = item_tiers
                     .iter()
-                    .map(|tier| &tier.mod_id)
-                    .cloned()
+                    .map(|tier| tier.mod_id)
                     .collect::<HashSet<_>>();
 
                 mod_groups.is_disjoint(&item_mod_groups)

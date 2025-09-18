@@ -1,47 +1,30 @@
 use std::collections::HashSet;
 
 use itertools::Itertools;
-use random_choice::random_choice;
 
 use crate::{
-    MODS, TIERS,
-    types::{Affix, ModFamily, TierId},
+    MODS_HV, TIERS_HV,
+    hashvec::OpaqueIndex,
+    types::{Affix, ModFamily, Tier, TierId},
 };
-
-/// Randomly roll a mod from the given pool
-pub fn roll_mod(candidate_tiers: &[TierId]) -> TierId {
-    let tiers = TIERS.get().unwrap();
-
-    let mut outcomes = vec![];
-    let mut weights = vec![];
-    for tier_id in candidate_tiers {
-        let tier = &tiers[tier_id];
-        outcomes.push(tier_id);
-        weights.push(tier.weight as f32);
-    }
-
-    let choices = random_choice().random_choice_f32(&outcomes, &weights, 1);
-    let choice = choices.first().unwrap();
-
-    (**choice).clone()
-}
 
 /// Minimum Modifier Level: Added random modifiers are at least this level or higher,
 /// except if a specific modifier type would be excluded entirely from being able to roll.
 /// In other words, at least one tier of each mod will always be eligible to roll, respecting item level.
 /// For example, if all tiers of a type of a modifier would be excluded, and the highest modifier tier
 /// is below Level 35 (e.g. Light Radius), the highest tier of Light Radius (requiring Level 30) would still be able to roll.
-pub fn filter_better_currency(candidate_tiers: &[TierId], min_ilvl: u32) -> Vec<TierId> {
-    let tiers = TIERS.get().unwrap();
-
-    let mut candidate_tiers = candidate_tiers
-        .iter()
-        .map(|tier_id| &tiers[tier_id])
-        .collect::<Vec<_>>();
+pub fn filter_better_currency(
+    candidate_tiers: &[OpaqueIndex<Tier>],
+    min_ilvl: u32,
+) -> Vec<OpaqueIndex<Tier>> {
+    let tiers = TIERS_HV.get().unwrap();
 
     // Group by mod group
-    candidate_tiers.sort_by_key(|t| &t.mod_id);
-    let tier_groups = candidate_tiers.into_iter().chunk_by(|t| &t.mod_id);
+    let tier_groups = candidate_tiers
+        .iter()
+        .copied()
+        .sorted_unstable_by_key(|&t| &tiers[t].mod_id)
+        .chunk_by(|&t| &tiers[t].mod_id);
 
     tier_groups
         .into_iter()
@@ -50,83 +33,85 @@ pub fn filter_better_currency(candidate_tiers: &[TierId], min_ilvl: u32) -> Vec<
             // Filter tiers by ilvl
             let mut filtered = group_tiers
                 .iter()
-                .filter(|t| t.ilvl >= min_ilvl)
+                .copied()
+                .filter(|&t| tiers[t].ilvl >= min_ilvl)
                 .collect::<Vec<_>>();
 
             // If there's none left, take the highest instead
             if filtered.is_empty() {
                 filtered = group_tiers
                     .iter()
-                    .max_by_key(|t| t.ilvl)
+                    .copied()
+                    .max_by_key(|&t| tiers[t].ilvl)
                     .into_iter()
                     .collect::<Vec<_>>();
             }
 
-            filtered.iter().map(|t| t.id.clone()).collect::<Vec<_>>()
+            filtered
         })
         .collect::<Vec<_>>()
 }
 
 /// For Sinistral/Dextral Omens
-pub fn filter_affix<'a, I: Iterator<Item = &'a TierId>>(
+pub fn filter_affix<I: Iterator<Item = OpaqueIndex<Tier>>>(
     candidate_mods: I,
     affix: Affix,
-) -> impl Iterator<Item = &'a TierId> {
-    let tiers = TIERS.get().unwrap();
+) -> impl Iterator<Item = OpaqueIndex<Tier>> {
+    let tiers = TIERS_HV.get().unwrap();
 
-    candidate_mods.filter(move |tier_id| {
-        let tier = &tiers[*tier_id];
+    candidate_mods.filter(move |&tier_id| {
+        let tier = &tiers[tier_id];
 
         tier.affix == affix
     })
 }
 
 /// For Homogenising Omen
-pub fn filter_tags<'a, I: Iterator<Item = &'a TierId>>(
+pub fn filter_tags<I: Iterator<Item = OpaqueIndex<Tier>>>(
     candidate_mods: I,
     tags: HashSet<TierId>,
-) -> impl Iterator<Item = &'a TierId> {
-    let tiers = TIERS.get().unwrap();
-    let mods = MODS.get().unwrap();
+) -> impl Iterator<Item = OpaqueIndex<Tier>> {
+    let tiers = TIERS_HV.get().unwrap();
+    let mods = MODS_HV.get().unwrap();
 
-    candidate_mods.filter(move |tier_id| {
-        let tier = &tiers[*tier_id];
-        let modifier = &mods[&tier.mod_id];
+    candidate_mods.filter(move |&tier_id| {
+        let tier = &tiers[tier_id];
+        let modifier = &mods[tier.mod_id];
 
         !modifier.tags.is_disjoint(&tags)
     })
 }
 
 /// For Whittling Omen
-pub fn filter_lowest_tier<'a, I: Iterator<Item = &'a TierId>>(
+pub fn filter_lowest_tier<I: Iterator<Item = OpaqueIndex<Tier>>>(
     candidate_mods: I,
-) -> impl Iterator<Item = &'a TierId> {
-    let tiers = TIERS.get().unwrap();
+) -> impl Iterator<Item = OpaqueIndex<Tier>> {
+    let tiers = TIERS_HV.get().unwrap();
 
     let candidate_mods = candidate_mods.collect::<Vec<_>>();
     let min_ilvl = candidate_mods
         .iter()
-        .map(|tier_id| tiers[*tier_id].ilvl)
+        .map(|&tier_id| tiers[tier_id].ilvl)
         .min()
         // If candidate_mods is empty, this value doesn't matter anyway
         .unwrap_or(0);
 
     candidate_mods
         .into_iter()
-        .filter(move |tier_id| tiers[*tier_id].ilvl == min_ilvl)
+        .filter(move |&tier_id| tiers[tier_id].ilvl == min_ilvl)
 }
 
 /// Removes tiers which conflict with the given families
-pub fn filter_out_families<'a, I: Iterator<Item = &'a TierId>>(
+pub fn filter_out_families<I: Iterator<Item = OpaqueIndex<Tier>>>(
     candidate_mods: I,
     families: HashSet<ModFamily>,
-) -> impl Iterator<Item = &'a TierId> {
-    let mods = MODS.get().unwrap();
-    let tiers = TIERS.get().unwrap();
+) -> impl Iterator<Item = OpaqueIndex<Tier>> {
+    let mods = MODS_HV.get().unwrap();
+    let tiers = TIERS_HV.get().unwrap();
 
-    candidate_mods.filter(move |tier_id| {
-        let tier = &tiers[*tier_id];
-        let modifier = &mods[&tier.mod_id];
+    candidate_mods.filter(move |&tier_id| {
+        let tier = &tiers[tier_id];
+        let modifier = &mods[tier.mod_id];
 
         !families.contains(&modifier.family)
     })

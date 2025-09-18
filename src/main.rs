@@ -9,17 +9,22 @@ use eframe::egui;
 use egui::{Align, Checkbox, ComboBox, DragValue, Grid, Layout, ScrollArea};
 use itertools::Itertools;
 use poe_crafting::{
-    ESSENCES, ITEM_TIERS, MODS, TIERS,
+    ESSENCES, ITEM_TIERS, MODS_HV, TIERS_HV,
     currency::{CURRENCIES, Currency},
+    hashvec::OpaqueIndex,
     init,
     item_state::{ItemState, Rarity, get_valid_mods_for_item},
-    types::{Affix, OmenId, TierId},
+    types::{Affix, OmenId, Tier},
 };
 
 #[derive(Debug)]
 enum SimStatus {
-    Done { results: HashMap<TierId, usize> },
-    Running { iterations_done: usize },
+    Done {
+        results: HashMap<OpaqueIndex<Tier>, usize>,
+    },
+    Running {
+        iterations_done: usize,
+    },
 }
 
 #[derive(Debug)]
@@ -84,8 +89,8 @@ impl Default for MyEguiApp {
 
 impl MyEguiApp {
     fn new(_cc: &eframe::CreationContext<'_>) -> Self {
-        let data_root = Path::new("/home/adam/repos/data/poe"); // laptop
-        // let data_root = Path::new("/mnt/nvme_4tb/programming/data/poe2"); // desktop
+        // let data_root = Path::new("/home/adam/repos/data/poe"); // laptop
+        let data_root = Path::new("/mnt/nvme_4tb/programming/data/poe2"); // desktop
         init(data_root);
 
         // Customize egui here with cc.egui_ctx.set_fonts and cc.egui_ctx.set_visuals.
@@ -119,8 +124,8 @@ impl MyEguiApp {
     /// Manually build an item by selecting modifiers
     fn item_builder(&mut self, ctx: &egui::Context) {
         let item_tiers = ITEM_TIERS.get().unwrap();
-        let tiers = TIERS.get().unwrap();
-        let mods = MODS.get().unwrap();
+        let tiers = TIERS_HV.get().unwrap();
+        let mods = MODS_HV.get().unwrap();
 
         egui::CentralPanel::default().show(ctx, |ui| {
             // ========== BASE ITEM ==============
@@ -157,7 +162,7 @@ impl MyEguiApp {
 
                 if self.base_item.item_level != old_ilvl {
                     // Ilvl changed, filter mods that are now too high
-                    self.base_item.mods.retain(|tier_id| {
+                    self.base_item.mods.retain(|&tier_id| {
                         let tier = &tiers[tier_id];
                         tier.ilvl >= self.base_item.item_level
                     });
@@ -181,18 +186,17 @@ impl MyEguiApp {
                         Rarity::Magic => 1,
                         Rarity::Rare => 3,
                     };
-                    let prefixes = self.base_item.mods.iter().filter(|tier_id| {
+                    let prefixes = self.base_item.mods.iter().copied().filter(|tier_id| {
                         let tier = &tiers[*tier_id];
                         tier.affix == Affix::Prefix
                     });
-                    let suffixes = self.base_item.mods.iter().filter(|tier_id| {
+                    let suffixes = self.base_item.mods.iter().copied().filter(|tier_id| {
                         let tier = &tiers[*tier_id];
                         tier.affix == Affix::Suffix
                     });
                     self.base_item.mods = prefixes
                         .take(max_affixes)
                         .chain(suffixes.take(max_affixes))
-                        .cloned()
                         .collect::<Vec<_>>();
                 }
             });
@@ -201,16 +205,9 @@ impl MyEguiApp {
             let candidate_tiers = get_valid_mods_for_item(&self.base_item);
             let affix_groups = candidate_tiers
                 .iter()
-                .map(|tier_id| &tiers[tier_id])
+                .map(|&tier_id| &tiers[tier_id])
                 .sorted_unstable_by_key(|tier| (&tier.affix, &tier.mod_id, &tier.ilvl))
                 .chunk_by(|tier| &tier.affix);
-
-            let item_tiers = self
-                .base_item
-                .mods
-                .iter()
-                .map(|tier_id| &tiers[tier_id])
-                .collect::<Vec<_>>();
 
             for (affix, group) in &affix_groups {
                 let mod_groups = group.chunk_by(|tier| &tier.mod_id);
@@ -220,20 +217,28 @@ impl MyEguiApp {
                 Grid::new(format!("affix_grid_{:?}", affix))
                     .num_columns(3)
                     .show(ui, |ui| {
-                        for (mod_id, group) in &mod_groups {
-                            ui.label(mod_id);
+                        for (&mod_id, group) in &mod_groups {
+                            ui.label(&mods[mod_id].group);
 
                             // Tier ilvls
-                            let item_tier = item_tiers.iter().find(|tier| &tier.mod_id == mod_id);
+                            let item_tier = self
+                                .base_item
+                                .mods
+                                .iter()
+                                .copied()
+                                .find(|&tier_id| tiers[tier_id].mod_id == mod_id);
+
                             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                                 // https://github.com/emilk/egui/issues/2247
                                 // Right alignment not supported in Grid yet, so use right-to-left
                                 // & reversed element creation instead
                                 let group = group.collect::<Vec<_>>();
                                 for tier in group.into_iter().rev() {
+                                    let group_tier_id = tiers.get_opaque(&tier.id);
+
                                     let label_text = format!("{:?}", tier.ilvl);
 
-                                    let mut selected = self.base_item.mods.contains(&tier.id);
+                                    let mut selected = self.base_item.mods.contains(&group_tier_id);
                                     let was_selected = selected;
                                     ui.add(Checkbox::new(&mut selected, label_text));
 
@@ -242,18 +247,18 @@ impl MyEguiApp {
                                             // Mod unselected
                                             self.base_item
                                                 .mods
-                                                .retain(|tier_id| tier_id != &tier.id);
+                                                .retain(|&tier_id| tier_id != group_tier_id);
                                         } else if item_tier.is_some() {
                                             // Mod tier swapped
                                             self.base_item
                                                 .mods
-                                                .retain(|tier_id| &tiers[tier_id].mod_id != mod_id);
-                                            self.base_item.mods.push(tier.id.clone());
+                                                .retain(|&tier_id| tiers[tier_id].mod_id != mod_id);
+                                            self.base_item.mods.push(group_tier_id);
                                         } else if !self.base_item.has_room(tier.affix) {
                                             // If we're already at max affixes, do nothing
                                         } else {
                                             // Add a new mod
-                                            self.base_item.mods.push(tier.id.clone());
+                                            self.base_item.mods.push(group_tier_id);
                                         }
                                     }
                                 }
@@ -288,8 +293,8 @@ impl MyEguiApp {
         };
 
         let item_tiers = ITEM_TIERS.get().unwrap();
-        let tiers = TIERS.get().unwrap();
-        let mods = MODS.get().unwrap();
+        let tiers = TIERS_HV.get().unwrap();
+        let mods = MODS_HV.get().unwrap();
 
         let candidate_tiers = get_valid_mods_for_item(&self.base_item);
 
@@ -381,17 +386,18 @@ impl MyEguiApp {
 
                         move || {
                             let mut results = HashMap::<_, usize>::new();
-                            let before_mods = base_item.mods.iter().collect::<HashSet<_>>();
+                            let before_mods =
+                                base_item.mods.iter().copied().collect::<HashSet<_>>();
                             for _ in 0..n {
                                 // Apply the currency
                                 let mut item = base_item.clone();
                                 currency.craft(&mut item, &candidate_tiers, &selected_omens);
 
                                 // Figure out which mod was added
-                                let after_mods = item.mods.iter().collect::<HashSet<_>>();
+                                let after_mods = item.mods.iter().copied().collect::<HashSet<_>>();
                                 let added = after_mods.difference(&before_mods);
                                 for tier_id in added {
-                                    *results.entry((*tier_id).clone()).or_default() += 1;
+                                    *results.entry(*tier_id).or_default() += 1;
                                 }
 
                                 // Update status
@@ -416,7 +422,7 @@ impl MyEguiApp {
                     SimStatus::Done { results } => {
                         let affix_groups = results
                             .iter()
-                            .map(|(tier_id, count)| (&tiers[tier_id], count))
+                            .map(|(&tier_id, &count)| (&tiers[tier_id], count))
                             .sorted_unstable_by_key(|(tier, _)| {
                                 (tier.affix, &tier.mod_id, tier.ilvl)
                             })
@@ -428,13 +434,14 @@ impl MyEguiApp {
                                 Grid::new(format!("results_grid_{:?}", affix))
                                     .num_columns(2)
                                     .show(ui, |ui| {
-                                        for (mod_id, group) in
+                                        for (&mod_id, group) in
                                             &mod_group.chunk_by(|(tier, _)| &tier.mod_id)
                                         {
-                                            ui.label(mod_id);
+                                            let modifier = &mods[mod_id];
+                                            ui.label(&modifier.group);
 
                                             let tier_counts = group.collect::<Vec<_>>();
-                                            Grid::new(format!("results_grid_{}", mod_id))
+                                            Grid::new(format!("results_grid_{}", modifier.group))
                                                 .num_columns(tier_counts.len())
                                                 .show(ui, |ui| {
                                                     // Ilvls on top row
@@ -448,7 +455,7 @@ impl MyEguiApp {
                                                         |(_, count)| {
                                                             ui.label(format!(
                                                                 "{:.1}%",
-                                                                (*count as f32 / n as f32) * 100.
+                                                                (count as f32 / n as f32) * 100.
                                                             ));
                                                         },
                                                     );

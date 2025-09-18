@@ -4,7 +4,9 @@ use std::{collections::HashMap, path::Path};
 use serde::{Deserialize, Deserializer, de::DeserializeOwned};
 
 use crate::{
+    TIERS_HV,
     currency::{CurrencyType, Essence, PerfectEssence},
+    hashvec::HashVec,
     types::{Affix, ModGroup, ModType, Modifier, StatID, Tier, TierId},
 };
 
@@ -162,6 +164,8 @@ impl Dats {
 }
 
 pub fn load_essences(dats: &Dats) -> Vec<CurrencyType> {
+    let tiers = TIERS_HV.get().unwrap();
+
     // Essence -> CoarseBaseId -> [ModId]
     let mut essence_base_mods = HashMap::<_, HashMap<_, _>>::new();
     dats.essence_mods.iter().for_each(|row| {
@@ -177,12 +181,12 @@ pub fn load_essences(dats: &Dats) -> Vec<CurrencyType> {
         // essencemods.OutcomeMods -> mods
         let mods = if let Some(mod_index) = row.Mod1 {
             // Single outcome
-            vec![dats.mods[mod_index].Id.clone()]
+            vec![tiers.get_opaque(&dats.mods[mod_index].Id)]
         } else {
             // Multiple outcomes
             row.OutcomeMods
                 .iter()
-                .map(|mod_index| dats.mods[*mod_index].Id.clone())
+                .map(|&mod_index| tiers.get_opaque(&dats.mods[mod_index].Id))
                 .collect()
         };
 
@@ -219,40 +223,9 @@ pub fn load_essences(dats: &Dats) -> Vec<CurrencyType> {
         .collect()
 }
 
-pub fn load_essence_target_item_categories(
-    path: &Path,
-    item_classes: &[String],
-) -> Vec<Vec<String>> {
-    EssenceTargetItemCategoriesRecord::load(path)
-        .map(|row| {
-            row.ItemClasses
-                .into_iter()
-                .map(|item_class| item_classes[item_class].clone())
-                .collect()
-        })
-        .collect()
-}
-
-pub fn load_essence_mods(
-    path: &Path,
-    essence_names: &[String],
-) -> HashMap<u32, HashMap<u32, Vec<u32>>> {
-    let essences = HashMap::new();
-    EssenceModsRecord::load(path).for_each(|row| {
-        // essencemods.Essence -> essences.BaseItemType -> baseitemtypes.Name
-        let name = &essence_names[row.Essence];
-        // essencemods.TargetItemCategory -> essencetargetitemcategories.ItemClasses ->
-        //      itemclasses.Id -(kinda)-> BaseItemId
-        // essencemods.Mod1 -> mods
-        // essencemods.OutcomeMods -> mods
-    });
-
-    essences
-}
-
-pub fn load_mod_tiers(dats: &Dats) -> (HashMap<TierId, Tier>, HashMap<ModGroup, Modifier>) {
+pub fn load_mod_tiers(dats: &Dats) -> (HashVec<TierId, Tier>, HashVec<ModGroup, Modifier>) {
     dats.mods.iter().fold(
-        (HashMap::new(), HashMap::new()),
+        (HashVec::default(), HashVec::default()),
         |(mut tiers, mut mod_stats), row| {
             // Parse out value ranges
             let stats_ranges = [
@@ -297,16 +270,18 @@ pub fn load_mod_tiers(dats: &Dats) -> (HashMap<TierId, Tier>, HashMap<ModGroup, 
                 stats,
                 family: mod_family.clone(),
             };
-            if !mod_stats.contains_key(mod_group) {
-                mod_stats.insert(mod_group.clone(), modifier);
-            }
+            let mod_id = if !mod_stats.contains_key(mod_group) {
+                mod_stats.insert(mod_group.clone(), modifier)
+            } else {
+                mod_stats.get_opaque(mod_group)
+            };
 
             tiers.insert(
                 row.Id.clone(),
                 Tier {
                     id: row.Id.clone(),
                     name: row.Name.clone(),
-                    mod_id: mod_group.clone(),
+                    mod_id,
                     ilvl: row.Level,
                     value_ranges,
                     mod_domain: row.Domain,
