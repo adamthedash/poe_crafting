@@ -1,3 +1,4 @@
 /target
 .aider*
-flamegraph*
+*.svg
+perf*

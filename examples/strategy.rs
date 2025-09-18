@@ -9,8 +9,8 @@ use poe_crafting::{
 };
 
 fn main() {
-    let data_root = Path::new("/home/adam/repos/data/poe"); // laptop
-    // let data_root = Path::new("/mnt/nvme_4tb/programming/data/poe2"); // desktop
+    // let data_root = Path::new("/home/adam/repos/data/poe"); // laptop
+    let data_root = Path::new("/mnt/nvme_4tb/programming/data/poe2"); // desktop
     init(data_root);
 
     let tiers = TIERS_HV.get().unwrap();
@@ -31,6 +31,7 @@ fn main() {
         },
         ModifierCondition {
             mod_group: mods.get_opaque("LocalFireDamage"),
+
             levels: vec![75, 81],
         },
         ModifierCondition {

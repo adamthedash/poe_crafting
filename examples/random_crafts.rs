@@ -1,7 +1,7 @@
 use std::{collections::HashSet, path::Path};
 
 use poe_crafting::{
-    ESSENCES, ITEM_TIERS,
+    ESSENCES, ITEM_TIERS, TIERS_HV,
     currency::{CURRENCIES, Currency},
     init,
     item_state::{ItemState, Rarity, get_valid_mods_for_item},
@@ -9,8 +9,8 @@ use poe_crafting::{
 use random_choice::random_choice;
 
 fn main() {
-    let data_root = Path::new("/home/adam/repos/data/poe"); // laptop
-    // let data_root = Path::new("/mnt/nvme_4tb/programming/data/poe2"); // desktop
+    // let data_root = Path::new("/home/adam/repos/data/poe"); // laptop
+    let data_root = Path::new("/mnt/nvme_4tb/programming/data/poe2"); // desktop
     init(data_root);
 
     let item_tiers = ITEM_TIERS.get().unwrap();
@@ -59,7 +59,7 @@ fn main() {
                     .map(|o| (*o).clone()),
             );
 
-            println!("{:?} {:?}", omens, currency);
+            // println!("{:?} {:?}", omens, currency);
             let before = item.clone();
             currency.craft(&mut item, &candidate_tiers, &omens);
             if !item.is_valid() {
@@ -71,7 +71,7 @@ fn main() {
             }
         }
 
-        item.print_item();
-        println!();
+        // item.print_item();
+        // println!();
     }
 }
