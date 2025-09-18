@@ -30,39 +30,39 @@ fn main() {
             levels: vec![65, 75],
         },
         ModifierCondition {
-            mod_group: "LocalFireDamage".to_string(),
+            mod_group: mods.get_opaque("LocalFireDamage"),
             levels: vec![75, 81],
         },
         ModifierCondition {
-            mod_group: "LocalColdDamage".to_string(),
+            mod_group: mods.get_opaque("LocalColdDamage"),
             levels: vec![75, 81],
         },
         ModifierCondition {
-            mod_group: "LocalLightningDamage".to_string(),
+            mod_group: mods.get_opaque("LocalLightningDamage"),
             levels: vec![75, 81],
         },
         ModifierCondition {
-            mod_group: "LocalPhysicalDamagePercent".to_string(),
+            mod_group: mods.get_opaque("LocalPhysicalDamagePercent"),
             levels: vec![60, 75, 82],
         },
         ModifierCondition {
-            mod_group: "IncreasedWeaponElementalDamagePercent".to_string(),
+            mod_group: mods.get_opaque("IncreasedWeaponElementalDamagePercent"),
             levels: vec![81],
         },
         ModifierCondition {
-            mod_group: "AdditionalArrows".to_string(),
+            mod_group: mods.get_opaque("AdditionalArrows"),
             levels: vec![82],
         },
         ModifierCondition {
-            mod_group: "LocalIncreasedAttackSpeed".to_string(),
+            mod_group: mods.get_opaque("LocalIncreasedAttackSpeed"),
             levels: vec![37],
         },
         ModifierCondition {
-            mod_group: "LocalBaseCriticalStrikeChance".to_string(),
+            mod_group: mods.get_opaque("LocalBaseCriticalStrikeChance"),
             levels: vec![59, 73],
         },
         ModifierCondition {
-            mod_group: "LocalCriticalStrikeMultiplier".to_string(),
+            mod_group: mods.get_opaque("LocalCriticalStrikeMultiplier"),
             levels: vec![59, 73],
         },
     ];
