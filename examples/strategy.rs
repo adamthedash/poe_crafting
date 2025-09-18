@@ -1,10 +1,7 @@
-use std::{
-    collections::HashSet,
-    path::Path,
-};
+use std::{collections::HashSet, path::Path};
 
 use poe_crafting::{
-    MODS, TIERS,
+    MODS_HV, TIERS_HV,
     currency::{Currency, CurrencyType},
     init,
     item_state::{ItemState, Rarity, get_valid_mods_for_item},
@@ -16,8 +13,8 @@ fn main() {
     // let data_root = Path::new("/mnt/nvme_4tb/programming/data/poe2"); // desktop
     init(data_root);
 
-    let tiers = TIERS.get().unwrap();
-    let mods = MODS.get().unwrap();
+    let tiers = TIERS_HV.get().unwrap();
+    let mods = MODS_HV.get().unwrap();
 
     let item = ItemState {
         base_type: "Bow".to_string(),
@@ -29,7 +26,7 @@ fn main() {
 
     let desirable_magic_mods = vec![
         ModifierCondition {
-            mod_group: "LocalPhysicalDamage".to_string(),
+            mod_group: mods.get_opaque("LocalPhysicalDamage"),
             levels: vec![65, 75],
         },
         ModifierCondition {
