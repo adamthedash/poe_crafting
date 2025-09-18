@@ -14,7 +14,7 @@ use poe_crafting::{
     hashvec::OpaqueIndex,
     init,
     item_state::{ItemState, Rarity, get_valid_mods_for_item},
-    types::{Affix, OmenId, Tier},
+    types::{Affix, Omen, Tier},
 };
 
 #[derive(Debug)]
@@ -39,7 +39,7 @@ enum Page {
     ItemBuilder,
     CraftProbability {
         selected_currency: usize,
-        selected_omens: HashSet<OmenId>,
+        selected_omens: HashSet<Omen>,
         simulation_state: Option<SimState>,
         num_iters_exp: u32,
     },
@@ -334,30 +334,30 @@ impl MyEguiApp {
                 .possible_omens()
                 .into_iter()
                 // Only omens that can be used
-                .filter(|omen| {
+                .filter(|&omen| {
                     currency.can_be_used(
                         &self.base_item,
                         &candidate_tiers,
-                        &HashSet::from_iter(std::iter::once(omen.clone())),
+                        &HashSet::from_iter(std::iter::once(omen)),
                     )
                 })
                 .collect::<Vec<_>>();
             omens.sort();
 
             ui.horizontal(|ui| {
-                for omen_id in omens {
+                for omen in omens {
                     // Individual omen buttons
-                    let mut selected = selected_omens.contains(&omen_id);
+                    let mut selected = selected_omens.contains(&omen);
                     let old_selected = selected;
-                    ui.checkbox(&mut selected, &omen_id);
+                    ui.checkbox(&mut selected, format!("{:?}", omen));
                     match (old_selected, selected) {
                         (true, false) => {
                             // Un-selected
-                            selected_omens.remove(&omen_id);
+                            selected_omens.remove(&omen);
                         }
                         (false, true) => {
                             // Selected
-                            selected_omens.insert(omen_id.clone());
+                            selected_omens.insert(omen);
                         }
                         _ => (),
                     }

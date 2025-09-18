@@ -217,4 +217,11 @@ impl Condition {
 /// LUT key is "|" delimited StatID's
 pub type StatFormatters = HashMap<String, Vec<StatFormatter>>;
 
-pub type OmenId = String;
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Omen {
+    Sinistral,
+    Dextral,
+    Homogenous,
+    Greater,
+    Whittling,
+}

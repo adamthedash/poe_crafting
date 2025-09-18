@@ -5,7 +5,7 @@ use crate::{
     currency::CurrencyType,
     hashvec::OpaqueIndex,
     item_state::{ItemState, Rarity},
-    types::{Modifier, OmenId, Tier},
+    types::{Modifier, Omen, Tier},
 };
 
 /// Eg. LocalAttackSpeed T2-T1
@@ -91,11 +91,11 @@ impl Condition {
     }
 }
 
-pub struct Strategy(pub Vec<(Condition, Option<(HashSet<OmenId>, CurrencyType)>)>);
+pub struct Strategy(pub Vec<(Condition, Option<(HashSet<Omen>, CurrencyType)>)>);
 
 impl Strategy {
     /// Select a crafting method given the item's current state
-    pub fn get_craft(&self, item: &ItemState) -> Option<&(HashSet<OmenId>, CurrencyType)> {
+    pub fn get_craft(&self, item: &ItemState) -> Option<&(HashSet<Omen>, CurrencyType)> {
         let matching_states = self
             .0
             .iter()

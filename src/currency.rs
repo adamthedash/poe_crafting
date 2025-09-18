@@ -7,11 +7,10 @@ use crate::crafting::{
     filter_affix, filter_better_currency, filter_lowest_tier, filter_out_families, filter_tags,
 };
 use crate::hashvec::OpaqueIndex;
-use crate::types::{Affix, BaseItemId, Tier};
+use crate::types::{Affix, BaseItemId, Omen, Tier};
 use crate::{
     MODS_HV, TIERS_HV,
     item_state::{ItemState, Rarity},
-    types::OmenId,
 };
 
 pub trait Currency {
@@ -22,7 +21,7 @@ pub trait Currency {
         &self,
         item: &ItemState,
         candidate_tiers: &[OpaqueIndex<Tier>],
-        omens: &HashSet<OmenId>,
+        omens: &HashSet<Omen>,
     ) -> bool;
 
     /// Use this currency on the item.
@@ -31,7 +30,7 @@ pub trait Currency {
         &self,
         item: &mut ItemState,
         candidate_tiers: &[OpaqueIndex<Tier>],
-        omens: &HashSet<OmenId>,
+        omens: &HashSet<Omen>,
     );
 }
 
@@ -45,7 +44,7 @@ impl Currency for Transmute {
         &self,
         item: &ItemState,
         _candidate_tiers: &[OpaqueIndex<Tier>],
-        _omens: &HashSet<OmenId>,
+        _omens: &HashSet<Omen>,
     ) -> bool {
         item.rarity == Rarity::Normal
     }
@@ -54,7 +53,7 @@ impl Currency for Transmute {
         &self,
         item: &mut ItemState,
         candidate_tiers: &[OpaqueIndex<Tier>],
-        _omens: &HashSet<OmenId>,
+        _omens: &HashSet<Omen>,
     ) {
         // Transmute doesn't care about omens
         Augmentation.craft(item, candidate_tiers, &HashSet::new());
@@ -72,7 +71,7 @@ impl Currency for GreaterTransmute {
         &self,
         item: &ItemState,
         candidate_tiers: &[OpaqueIndex<Tier>],
-        omens: &HashSet<OmenId>,
+        omens: &HashSet<Omen>,
     ) -> bool {
         Transmute.can_be_used(item, candidate_tiers, omens)
     }
@@ -81,7 +80,7 @@ impl Currency for GreaterTransmute {
         &self,
         item: &mut ItemState,
         candidate_tiers: &[OpaqueIndex<Tier>],
-        omens: &HashSet<OmenId>,
+        omens: &HashSet<Omen>,
     ) {
         let candidate_tiers = filter_better_currency(candidate_tiers, 55);
         Transmute.craft(item, &candidate_tiers, omens);
@@ -98,7 +97,7 @@ impl Currency for PerfectTransmute {
         &self,
         item: &ItemState,
         candidate_tiers: &[OpaqueIndex<Tier>],
-        omens: &HashSet<OmenId>,
+        omens: &HashSet<Omen>,
     ) -> bool {
         Transmute.can_be_used(item, candidate_tiers, omens)
     }
@@ -107,7 +106,7 @@ impl Currency for PerfectTransmute {
         &self,
         item: &mut ItemState,
         candidate_tiers: &[OpaqueIndex<Tier>],
-        omens: &HashSet<OmenId>,
+        omens: &HashSet<Omen>,
     ) {
         let candidate_tiers = filter_better_currency(candidate_tiers, 70);
         Transmute.craft(item, &candidate_tiers, omens);
@@ -124,7 +123,7 @@ impl Currency for Augmentation {
         &self,
         item: &ItemState,
         _candidate_tiers: &[OpaqueIndex<Tier>],
-        _omens: &HashSet<OmenId>,
+        _omens: &HashSet<Omen>,
     ) -> bool {
         item.rarity == Rarity::Magic && item.mods.len() < 2
     }
@@ -133,7 +132,7 @@ impl Currency for Augmentation {
         &self,
         item: &mut ItemState,
         candidate_tiers: &[OpaqueIndex<Tier>],
-        _omens: &HashSet<OmenId>,
+        _omens: &HashSet<Omen>,
     ) {
         let tiers = TIERS_HV.get().unwrap();
 
@@ -173,7 +172,7 @@ impl Currency for GreaterAugmentation {
         &self,
         item: &ItemState,
         candidate_tiers: &[OpaqueIndex<Tier>],
-        omens: &HashSet<OmenId>,
+        omens: &HashSet<Omen>,
     ) -> bool {
         Augmentation.can_be_used(item, candidate_tiers, omens)
     }
@@ -182,7 +181,7 @@ impl Currency for GreaterAugmentation {
         &self,
         item: &mut ItemState,
         candidate_tiers: &[OpaqueIndex<Tier>],
-        omens: &HashSet<OmenId>,
+        omens: &HashSet<Omen>,
     ) {
         let candidate_tiers = filter_better_currency(candidate_tiers, 55);
         Augmentation.craft(item, &candidate_tiers, omens);
@@ -199,7 +198,7 @@ impl Currency for PerfectAugmentation {
         &self,
         item: &ItemState,
         candidate_tiers: &[OpaqueIndex<Tier>],
-        omens: &HashSet<OmenId>,
+        omens: &HashSet<Omen>,
     ) -> bool {
         Augmentation.can_be_used(item, candidate_tiers, omens)
     }
@@ -208,7 +207,7 @@ impl Currency for PerfectAugmentation {
         &self,
         item: &mut ItemState,
         candidate_tiers: &[OpaqueIndex<Tier>],
-        omens: &HashSet<OmenId>,
+        omens: &HashSet<Omen>,
     ) {
         let candidate_tiers = filter_better_currency(candidate_tiers, 70);
         Augmentation.craft(item, &candidate_tiers, omens);
@@ -225,7 +224,7 @@ impl Currency for Regal {
         &self,
         item: &ItemState,
         candidate_tiers: &[OpaqueIndex<Tier>],
-        omens: &HashSet<OmenId>,
+        omens: &HashSet<Omen>,
     ) -> bool {
         item.rarity == Rarity::Magic && {
             // TODO: see if we can do this check without copying
@@ -239,7 +238,7 @@ impl Currency for Regal {
         &self,
         item: &mut ItemState,
         candidate_tiers: &[OpaqueIndex<Tier>],
-        omens: &HashSet<OmenId>,
+        omens: &HashSet<Omen>,
     ) {
         item.rarity = Rarity::Rare;
         Exalt.craft(item, candidate_tiers, omens);
@@ -256,7 +255,7 @@ impl Currency for GreaterRegal {
         &self,
         item: &ItemState,
         candidate_tiers: &[OpaqueIndex<Tier>],
-        omens: &HashSet<OmenId>,
+        omens: &HashSet<Omen>,
     ) -> bool {
         Regal.can_be_used(item, candidate_tiers, omens)
     }
@@ -265,7 +264,7 @@ impl Currency for GreaterRegal {
         &self,
         item: &mut ItemState,
         candidate_tiers: &[OpaqueIndex<Tier>],
-        omens: &HashSet<OmenId>,
+        omens: &HashSet<Omen>,
     ) {
         let candidate_tiers = filter_better_currency(candidate_tiers, 35);
         Regal.craft(item, &candidate_tiers, omens);
@@ -282,7 +281,7 @@ impl Currency for PerfectRegal {
         &self,
         item: &ItemState,
         candidate_tiers: &[OpaqueIndex<Tier>],
-        omens: &HashSet<OmenId>,
+        omens: &HashSet<Omen>,
     ) -> bool {
         Regal.can_be_used(item, candidate_tiers, omens)
     }
@@ -291,7 +290,7 @@ impl Currency for PerfectRegal {
         &self,
         item: &mut ItemState,
         candidate_tiers: &[OpaqueIndex<Tier>],
-        omens: &HashSet<OmenId>,
+        omens: &HashSet<Omen>,
     ) {
         let candidate_tiers = filter_better_currency(candidate_tiers, 50);
         Regal.craft(item, &candidate_tiers, omens);
@@ -308,7 +307,7 @@ impl Currency for Exalt {
         &self,
         item: &ItemState,
         candidate_tiers: &[OpaqueIndex<Tier>],
-        omens: &HashSet<OmenId>,
+        omens: &HashSet<Omen>,
     ) -> bool {
         item.rarity == Rarity::Rare && item.mods.len() < 6 && {
             // Omens
@@ -317,15 +316,15 @@ impl Currency for Exalt {
             let mut candidate_tiers: Box<dyn Iterator<Item = OpaqueIndex<Tier>>> =
                 Box::new(candidate_tiers.iter().copied());
 
-            if omens.contains("Dextral") {
+            if omens.contains(&Omen::Dextral) {
                 // filter suffixes
                 candidate_tiers = Box::new(filter_affix(candidate_tiers, Affix::Suffix));
             }
-            if omens.contains("Sinistral") {
+            if omens.contains(&Omen::Sinistral) {
                 // filter prefixes
                 candidate_tiers = Box::new(filter_affix(candidate_tiers, Affix::Prefix));
             }
-            if omens.contains("Homogenising") {
+            if omens.contains(&Omen::Homogenous) {
                 // filter tags
                 let existing_tags = item.mod_tags();
                 // If there are no tags, homogenizing has no effect
@@ -341,7 +340,7 @@ impl Currency for Exalt {
             }
 
             // Which affixes can be slammed
-            if omens.contains("Greater") {
+            if omens.contains(&Omen::Greater) {
                 let unique_affixes = candidate_tiers
                     .iter()
                     .map(|&tier_id| {
@@ -371,7 +370,7 @@ impl Currency for Exalt {
         &self,
         item: &mut ItemState,
         candidate_tiers: &[OpaqueIndex<Tier>],
-        omens: &HashSet<OmenId>,
+        omens: &HashSet<Omen>,
     ) {
         let tiers = TIERS_HV.get().unwrap();
 
@@ -379,15 +378,15 @@ impl Currency for Exalt {
             Box::new(candidate_tiers.iter().copied());
 
         // Apply omens
-        if omens.contains("Dextral") {
+        if omens.contains(&Omen::Dextral) {
             // filter suffixes
             candidate_tiers = Box::new(filter_affix(candidate_tiers, Affix::Suffix));
         }
-        if omens.contains("Sinistral") {
+        if omens.contains(&Omen::Sinistral) {
             // filter prefixes
             candidate_tiers = Box::new(filter_affix(candidate_tiers, Affix::Prefix));
         }
-        if omens.contains("Homogenising") {
+        if omens.contains(&Omen::Homogenous) {
             // filter tags
             let existing_tags = item.mod_tags();
             // If there are no tags, homogenizing has no effect
@@ -399,7 +398,7 @@ impl Currency for Exalt {
         let candidate_tiers = candidate_tiers.collect::<Vec<_>>();
 
         // TODO: Check validity of 2nd slam
-        let num_slams = if omens.contains("Greater") { 2 } else { 1 };
+        let num_slams = if omens.contains(&Omen::Greater) { 2 } else { 1 };
         for _ in 0..num_slams {
             let candidate_tiers = self.filter_slammable(item, &candidate_tiers);
 
@@ -458,7 +457,7 @@ impl Currency for GreaterExalt {
         &self,
         item: &ItemState,
         candidate_tiers: &[OpaqueIndex<Tier>],
-        omens: &HashSet<OmenId>,
+        omens: &HashSet<Omen>,
     ) -> bool {
         Exalt.can_be_used(item, candidate_tiers, omens)
     }
@@ -467,7 +466,7 @@ impl Currency for GreaterExalt {
         &self,
         item: &mut ItemState,
         candidate_tiers: &[OpaqueIndex<Tier>],
-        omens: &HashSet<OmenId>,
+        omens: &HashSet<Omen>,
     ) {
         let candidate_tiers = filter_better_currency(candidate_tiers, 35);
         Exalt.craft(item, &candidate_tiers, omens);
@@ -484,7 +483,7 @@ impl Currency for PerfectExalt {
         &self,
         item: &ItemState,
         candidate_tiers: &[OpaqueIndex<Tier>],
-        omens: &HashSet<OmenId>,
+        omens: &HashSet<Omen>,
     ) -> bool {
         Exalt.can_be_used(item, candidate_tiers, omens)
     }
@@ -493,7 +492,7 @@ impl Currency for PerfectExalt {
         &self,
         item: &mut ItemState,
         candidate_tiers: &[OpaqueIndex<Tier>],
-        omens: &HashSet<OmenId>,
+        omens: &HashSet<Omen>,
     ) {
         let candidate_tiers = filter_better_currency(candidate_tiers, 50);
         Exalt.craft(item, &candidate_tiers, omens);
@@ -510,7 +509,7 @@ impl Currency for Annulment {
         &self,
         item: &ItemState,
         _candidate_tiers: &[OpaqueIndex<Tier>],
-        omens: &HashSet<OmenId>,
+        omens: &HashSet<Omen>,
     ) -> bool {
         !item.mods.is_empty() && {
             // Omens
@@ -518,20 +517,20 @@ impl Currency for Annulment {
                 Box::new(item.mods.iter().copied());
 
             // Apply omens
-            if omens.contains("Dextral") {
+            if omens.contains(&Omen::Dextral) {
                 // filter suffixes
                 candidate_removes = Box::new(filter_affix(candidate_removes, Affix::Suffix));
             }
-            if omens.contains("Sinistral") {
+            if omens.contains(&Omen::Sinistral) {
                 // filter prefixes
                 candidate_removes = Box::new(filter_affix(candidate_removes, Affix::Prefix));
             }
             // For chaos orb
-            if omens.contains("Whittling") {
+            if omens.contains(&Omen::Whittling) {
                 // filter lowest tier
                 candidate_removes = Box::new(filter_lowest_tier(candidate_removes));
             }
-            let num_removes = if omens.contains("Greater") { 2 } else { 1 };
+            let num_removes = if omens.contains(&Omen::Greater) { 2 } else { 1 };
 
             candidate_removes.count() >= num_removes
         }
@@ -541,23 +540,23 @@ impl Currency for Annulment {
         &self,
         item: &mut ItemState,
         _candidate_tiers: &[OpaqueIndex<Tier>],
-        omens: &HashSet<OmenId>,
+        omens: &HashSet<Omen>,
     ) {
         // Omens
         let mut candidate_removes: Box<dyn Iterator<Item = OpaqueIndex<Tier>>> =
             Box::new(item.mods.iter().copied());
 
         // Apply omens
-        if omens.contains("Dextral") {
+        if omens.contains(&Omen::Dextral) {
             // filter suffixes
             candidate_removes = Box::new(filter_affix(candidate_removes, Affix::Suffix));
         }
-        if omens.contains("Sinistral") {
+        if omens.contains(&Omen::Sinistral) {
             // filter prefixes
             candidate_removes = Box::new(filter_affix(candidate_removes, Affix::Prefix));
         }
         // For chaos orb
-        if omens.contains("Whittling") {
+        if omens.contains(&Omen::Whittling) {
             // filter lowest tier
             candidate_removes = Box::new(filter_lowest_tier(candidate_removes));
         }
@@ -565,7 +564,7 @@ impl Currency for Annulment {
         let mut candidate_removes = candidate_removes.collect::<Vec<_>>();
 
         // TODO: Check validity of 2nd remove
-        let num_removes = if omens.contains("Greater") { 2 } else { 1 };
+        let num_removes = if omens.contains(&Omen::Greater) { 2 } else { 1 };
         for _ in 0..num_removes {
             let weights = vec![1.; candidate_removes.len()];
             let to_remove = *(*random_choice()
@@ -589,7 +588,7 @@ impl Currency for Alchemy {
         &self,
         item: &ItemState,
         _candidate_tiers: &[OpaqueIndex<Tier>],
-        _omens: &HashSet<OmenId>,
+        _omens: &HashSet<Omen>,
     ) -> bool {
         item.rarity == Rarity::Normal
     }
@@ -598,14 +597,14 @@ impl Currency for Alchemy {
         &self,
         item: &mut ItemState,
         candidate_tiers: &[OpaqueIndex<Tier>],
-        omens: &HashSet<OmenId>,
+        omens: &HashSet<Omen>,
     ) {
         item.rarity = Rarity::Rare;
 
-        let omens = if omens.contains("Dextral") {
-            HashSet::from_iter(std::iter::once("Dextral".to_string()))
-        } else if omens.contains("Sinistral") {
-            HashSet::from_iter(std::iter::once("Sinistral".to_string()))
+        let omens = if omens.contains(&Omen::Dextral) {
+            HashSet::from_iter(std::iter::once(Omen::Dextral))
+        } else if omens.contains(&Omen::Sinistral) {
+            HashSet::from_iter(std::iter::once(Omen::Sinistral))
         } else {
             HashSet::new()
         };
@@ -627,7 +626,7 @@ impl Currency for Chaos {
         &self,
         item: &ItemState,
         candidate_tiers: &[OpaqueIndex<Tier>],
-        omens: &HashSet<OmenId>,
+        omens: &HashSet<Omen>,
     ) -> bool {
         item.rarity == Rarity::Rare && Annulment.can_be_used(item, candidate_tiers, omens)
     }
@@ -636,7 +635,7 @@ impl Currency for Chaos {
         &self,
         item: &mut ItemState,
         candidate_tiers: &[OpaqueIndex<Tier>],
-        omens: &HashSet<OmenId>,
+        omens: &HashSet<Omen>,
     ) {
         Annulment.craft(item, candidate_tiers, omens);
         Exalt.craft(item, candidate_tiers, &HashSet::new());
@@ -653,7 +652,7 @@ impl Currency for GreaterChaos {
         &self,
         item: &ItemState,
         candidate_tiers: &[OpaqueIndex<Tier>],
-        omens: &HashSet<OmenId>,
+        omens: &HashSet<Omen>,
     ) -> bool {
         Chaos.can_be_used(item, candidate_tiers, omens)
     }
@@ -662,7 +661,7 @@ impl Currency for GreaterChaos {
         &self,
         item: &mut ItemState,
         candidate_tiers: &[OpaqueIndex<Tier>],
-        omens: &HashSet<OmenId>,
+        omens: &HashSet<Omen>,
     ) {
         let candidate_tiers = filter_better_currency(candidate_tiers, 35);
         Chaos.craft(item, &candidate_tiers, omens);
@@ -679,7 +678,7 @@ impl Currency for PerfectChaos {
         &self,
         item: &ItemState,
         candidate_tiers: &[OpaqueIndex<Tier>],
-        omens: &HashSet<OmenId>,
+        omens: &HashSet<Omen>,
     ) -> bool {
         Chaos.can_be_used(item, candidate_tiers, omens)
     }
@@ -688,7 +687,7 @@ impl Currency for PerfectChaos {
         &self,
         item: &mut ItemState,
         candidate_tiers: &[OpaqueIndex<Tier>],
-        omens: &HashSet<OmenId>,
+        omens: &HashSet<Omen>,
     ) {
         let candidate_tiers = filter_better_currency(candidate_tiers, 50);
         Chaos.craft(item, &candidate_tiers, omens);
@@ -710,7 +709,7 @@ impl Currency for Essence {
         &self,
         item: &ItemState,
         _candidate_tiers: &[OpaqueIndex<Tier>],
-        _omens: &HashSet<OmenId>,
+        _omens: &HashSet<Omen>,
     ) -> bool {
         let mods = MODS_HV.get().unwrap();
         let tiers = TIERS_HV.get().unwrap();
@@ -755,7 +754,7 @@ impl Currency for Essence {
         &self,
         item: &mut ItemState,
         _candidate_tiers: &[OpaqueIndex<Tier>],
-        _omens: &HashSet<OmenId>,
+        _omens: &HashSet<Omen>,
     ) {
         item.rarity = Rarity::Rare;
         Exalt.craft(item, &self.tiers[&item.base_type], &HashSet::new());
@@ -776,7 +775,7 @@ impl Currency for PerfectEssence {
         &self,
         item: &ItemState,
         _candidate_tiers: &[OpaqueIndex<Tier>],
-        omens: &HashSet<OmenId>,
+        omens: &HashSet<Omen>,
     ) -> bool {
         let mods = MODS_HV.get().unwrap();
         let tiers = TIERS_HV.get().unwrap();
@@ -826,11 +825,11 @@ impl Currency for PerfectEssence {
         }
 
         // Apply omens
-        if omens.contains("Dextral") {
+        if omens.contains(&Omen::Dextral) {
             // filter suffixes
             candidate_removes = Box::new(filter_affix(candidate_removes, Affix::Suffix));
         }
-        if omens.contains("Sinistral") {
+        if omens.contains(&Omen::Sinistral) {
             // filter prefixes
             candidate_removes = Box::new(filter_affix(candidate_removes, Affix::Prefix));
         }
@@ -842,7 +841,7 @@ impl Currency for PerfectEssence {
         &self,
         item: &mut ItemState,
         _candidate_tiers: &[OpaqueIndex<Tier>],
-        omens: &HashSet<OmenId>,
+        omens: &HashSet<Omen>,
     ) {
         let tiers = TIERS_HV.get().unwrap();
 
@@ -876,11 +875,11 @@ impl Currency for PerfectEssence {
         }
 
         // Apply omens
-        if omens.contains("Dextral") {
+        if omens.contains(&Omen::Dextral) {
             // filter suffixes
             candidate_removes = Box::new(filter_affix(candidate_removes, Affix::Suffix));
         }
-        if omens.contains("Sinistral") {
+        if omens.contains(&Omen::Sinistral) {
             // filter prefixes
             candidate_removes = Box::new(filter_affix(candidate_removes, Affix::Prefix));
         }
@@ -889,10 +888,10 @@ impl Currency for PerfectEssence {
 
         // Remove a mod
         let weights = vec![1.; candidate_removes.len()];
-        let to_remove = (**random_choice()
+        let to_remove = **random_choice()
             .random_choice_f32(&candidate_removes, &weights, 1)
             .first()
-            .expect("No candidates to remove!"));
+            .expect("No candidates to remove!");
 
         item.mods.retain(|tier_id| *tier_id != to_remove);
 
@@ -954,7 +953,7 @@ impl Currency for CurrencyType {
         &self,
         item: &ItemState,
         candidate_tiers: &[OpaqueIndex<Tier>],
-        omens: &HashSet<OmenId>,
+        omens: &HashSet<Omen>,
     ) -> bool {
         match self {
             Self::Transmute => Transmute.can_be_used(item, candidate_tiers, omens),
@@ -987,7 +986,7 @@ impl Currency for CurrencyType {
         &self,
         item: &mut ItemState,
         candidate_tiers: &[OpaqueIndex<Tier>],
-        omens: &HashSet<OmenId>,
+        omens: &HashSet<Omen>,
     ) {
         match self {
             Self::Transmute => Transmute.craft(item, candidate_tiers, omens),
@@ -1015,20 +1014,21 @@ impl Currency for CurrencyType {
 
 impl CurrencyType {
     /// Get the list of omens that can be used with this currency type
-    pub fn possible_omens(&self) -> HashSet<OmenId> {
+    pub fn possible_omens(&self) -> HashSet<Omen> {
         use CurrencyType::*;
+        use Omen::*;
         let omens = match self {
-            Regal | GreaterRegal | PerfectRegal => vec!["Homogenising"],
-            Annulment => vec!["Sinistral", "Dextral", "Greater"],
-            Alchemy | PerfectEssence(_) => vec!["Sinistral", "Dextral"],
-            Chaos | GreaterChaos | PerfectChaos => vec!["Sinistral", "Dextral", "Whittling"],
+            Regal | GreaterRegal | PerfectRegal => vec![Homogenous],
+            Annulment => vec![Sinistral, Dextral, Greater],
+            Alchemy | PerfectEssence(_) => vec![Sinistral, Dextral],
+            Chaos | GreaterChaos | PerfectChaos => vec![Sinistral, Dextral, Whittling],
             Exalt | GreaterExalt | PerfectExalt => {
-                vec!["Sinistral", "Dextral", "Homogenising", "Greater"]
+                vec![Sinistral, Dextral, Homogenous, Greater]
             }
             _ => vec![],
         };
 
-        HashSet::from_iter(omens.into_iter().map(str::to_string))
+        HashSet::from_iter(omens.into_iter())
     }
 }
 
