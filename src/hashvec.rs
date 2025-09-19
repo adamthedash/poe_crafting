@@ -49,12 +49,12 @@ impl<T> Eq for OpaqueIndex<T> {}
 
 impl<T> PartialOrd for OpaqueIndex<T> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.index.cmp(&other.index))
+        Some(self.cmp(other))
     }
 }
 impl<T> Ord for OpaqueIndex<T> {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other).unwrap()
+        self.index.cmp(&other.index)
     }
 }
 
@@ -153,15 +153,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::HashMap, marker::PhantomData, ops::Deref};
 
     use crate::hashvec::{HashVec, OpaqueIndex};
 
     #[test]
     fn test_hashvec() {
-        #[derive(Clone, Copy)]
-        struct MyIndexType;
-
         let values = 0..10;
         let keys = values.clone().map(|v| format!("{v:?}")).collect::<Vec<_>>();
 

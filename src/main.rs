@@ -6,15 +6,17 @@ use std::{
 };
 
 use eframe::egui;
-use egui::{Align, Checkbox, ComboBox, DragValue, Grid, Layout, ScrollArea};
+use egui::{Align, CentralPanel, Checkbox, ComboBox, DragValue, Grid, Layout, ScrollArea, Ui};
 use itertools::Itertools;
 use poe_crafting::{
     ESSENCES, ITEM_TIERS, MODS_HV, TIERS_HV,
-    currency::{CURRENCIES, Currency},
+    currency::{CURRENCIES, Currency, CurrencyType},
     hashvec::OpaqueIndex,
     init,
     item_state::{ItemState, Rarity, get_valid_mods_for_item},
+    strategy::{Condition, ConditionGroup, Strategy},
     types::{Affix, Omen, Tier},
+    ui::{dropdown, rarity_dropdown},
 };
 
 #[derive(Debug)]
@@ -43,6 +45,7 @@ enum Page {
         simulation_state: Option<SimState>,
         num_iters_exp: u32,
     },
+    StrategyBuilder,
 }
 
 impl Page {
@@ -55,8 +58,9 @@ impl Page {
                 selected_currency: 0,
                 selected_omens: HashSet::new(),
                 simulation_state: None,
-                num_iters_exp: 2,
+                num_iters_exp: 5,
             },
+            StrategyBuilder,
         ]
     }
 
@@ -64,6 +68,7 @@ impl Page {
         match self {
             Page::ItemBuilder => "Item Builder",
             Page::CraftProbability { .. } => "Craft Probabilities",
+            Page::StrategyBuilder => "Strategy Builder",
         }
     }
 }
@@ -116,6 +121,7 @@ impl eframe::App for MyEguiApp {
         match self.page {
             Page::ItemBuilder => self.item_builder(ctx),
             Page::CraftProbability { .. } => self.craft_probability(ctx),
+            Page::StrategyBuilder => self.strategy_builder(ctx),
         }
     }
 }
@@ -125,7 +131,6 @@ impl MyEguiApp {
     fn item_builder(&mut self, ctx: &egui::Context) {
         let item_tiers = ITEM_TIERS.get().unwrap();
         let tiers = TIERS_HV.get().unwrap();
-        let mods = MODS_HV.get().unwrap();
 
         egui::CentralPanel::default().show(ctx, |ui| {
             // ========== BASE ITEM ==============
@@ -133,23 +138,17 @@ impl MyEguiApp {
                 let mut base_items = item_tiers.keys().collect::<Vec<_>>();
                 base_items.sort_unstable();
 
-                let mut selected = base_items
-                    .iter()
-                    .position(|b| **b == self.base_item.base_type)
-                    .unwrap();
-                let was_selected = selected;
-
                 ui.label("Base Item");
-                ComboBox::from_id_salt("combo_base").show_index(
+                let old_base = dropdown(
                     ui,
-                    &mut selected,
-                    base_items.len(),
-                    |i| base_items[i],
+                    &mut self.base_item.base_type,
+                    &base_items,
+                    "combo_base",
+                    |b| b.clone(),
                 );
-                self.base_item.base_type = base_items[selected].clone();
                 ui.end_row();
 
-                if selected != was_selected {
+                if old_base.is_some() {
                     // Base changed, clear mods from item
                     self.base_item.mods.clear();
                 }
@@ -170,16 +169,10 @@ impl MyEguiApp {
 
                 // Rarity
                 ui.label("Rarity");
-                let old_rarity = self.base_item.rarity;
-                ComboBox::from_id_salt("combo_rarity")
-                    .selected_text(format!("{:?}", self.base_item.rarity))
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(&mut self.base_item.rarity, Rarity::Normal, "Normal");
-                        ui.selectable_value(&mut self.base_item.rarity, Rarity::Magic, "Magic");
-                        ui.selectable_value(&mut self.base_item.rarity, Rarity::Rare, "Rare");
-                    });
+                let old_rarity = rarity_dropdown(ui, &mut self.base_item.rarity);
                 ui.end_row();
-                if self.base_item.rarity != old_rarity {
+
+                if old_rarity.is_some() {
                     // Rarity changed, limit the mods
                     let max_affixes = match self.base_item.rarity {
                         Rarity::Normal => 0,
@@ -202,80 +195,7 @@ impl MyEguiApp {
             });
 
             // ============= Mods ====================
-            let candidate_tiers = get_valid_mods_for_item(&self.base_item);
-            let affix_groups = candidate_tiers
-                .iter()
-                .map(|&tier_id| &tiers[tier_id])
-                .sorted_unstable_by_key(|tier| (&tier.affix, &tier.mod_id, &tier.ilvl))
-                .chunk_by(|tier| &tier.affix);
-
-            for (affix, group) in &affix_groups {
-                let mod_groups = group.chunk_by(|tier| &tier.mod_id);
-
-                ui.heading(format!("{:?}", affix));
-
-                Grid::new(format!("affix_grid_{:?}", affix))
-                    .num_columns(3)
-                    .show(ui, |ui| {
-                        for (&mod_id, group) in &mod_groups {
-                            ui.label(&mods[mod_id].group);
-
-                            // Tier ilvls
-                            let item_tier = self
-                                .base_item
-                                .mods
-                                .iter()
-                                .copied()
-                                .find(|&tier_id| tiers[tier_id].mod_id == mod_id);
-
-                            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                                // https://github.com/emilk/egui/issues/2247
-                                // Right alignment not supported in Grid yet, so use right-to-left
-                                // & reversed element creation instead
-                                let group = group.collect::<Vec<_>>();
-                                for tier in group.into_iter().rev() {
-                                    let group_tier_id = tiers.get_opaque(&tier.id);
-
-                                    let label_text = format!("{:?}", tier.ilvl);
-
-                                    let mut selected = self.base_item.mods.contains(&group_tier_id);
-                                    let was_selected = selected;
-                                    ui.add(Checkbox::new(&mut selected, label_text));
-
-                                    if was_selected != selected {
-                                        if !selected {
-                                            // Mod unselected
-                                            self.base_item
-                                                .mods
-                                                .retain(|&tier_id| tier_id != group_tier_id);
-                                        } else if item_tier.is_some() {
-                                            // Mod tier swapped
-                                            self.base_item
-                                                .mods
-                                                .retain(|&tier_id| tiers[tier_id].mod_id != mod_id);
-                                            self.base_item.mods.push(group_tier_id);
-                                        } else if !self.base_item.has_room(tier.affix) {
-                                            // If we're already at max affixes, do nothing
-                                        } else {
-                                            // Add a new mod
-                                            self.base_item.mods.push(group_tier_id);
-                                        }
-                                    }
-                                }
-                            });
-
-                            // Tags
-                            let modifier = &mods[mod_id];
-                            ui.horizontal(|ui| {
-                                for tag in &modifier.tags {
-                                    ui.label(tag);
-                                }
-                            });
-
-                            ui.end_row();
-                        }
-                    });
-            }
+            display_mod_select_grid(ui, &mut self.base_item);
         });
     }
 
@@ -291,10 +211,6 @@ impl MyEguiApp {
         else {
             unreachable!()
         };
-
-        let item_tiers = ITEM_TIERS.get().unwrap();
-        let tiers = TIERS_HV.get().unwrap();
-        let mods = MODS_HV.get().unwrap();
 
         let candidate_tiers = get_valid_mods_for_item(&self.base_item);
 
@@ -374,98 +290,19 @@ impl MyEguiApp {
 
             // Simulation
             if ui.button("Go!").clicked() {
-                let status = Arc::new(Mutex::new(SimStatus::Running { iterations_done: 0 }));
-                let state = SimState {
-                    base_item: self.base_item.clone(),
-                    status: status.clone(),
-                    handle: thread::spawn({
-                        let base_item = self.base_item.clone();
-                        let currency = currency.clone();
-                        let candidate_tiers = candidate_tiers.clone();
-                        let selected_omens = selected_omens.clone();
-
-                        move || {
-                            let mut results = HashMap::<_, usize>::new();
-                            let before_mods =
-                                base_item.mods.iter().copied().collect::<HashSet<_>>();
-                            for _ in 0..n {
-                                // Apply the currency
-                                let mut item = base_item.clone();
-                                currency.craft(&mut item, &candidate_tiers, &selected_omens);
-
-                                // Figure out which mod was added
-                                let after_mods = item.mods.iter().copied().collect::<HashSet<_>>();
-                                let added = after_mods.difference(&before_mods);
-                                for tier_id in added {
-                                    *results.entry(*tier_id).or_default() += 1;
-                                }
-
-                                // Update status
-                                let mut status = status.lock().unwrap();
-                                let SimStatus::Running { iterations_done } = &mut *status else {
-                                    unreachable!();
-                                };
-                                *iterations_done += 1;
-                            }
-
-                            // Give the results back
-                            let mut status = status.lock().unwrap();
-                            *status = SimStatus::Done { results };
-                        }
-                    }),
-                };
+                let state = run_sim(
+                    self.base_item.clone(),
+                    currency.clone(),
+                    selected_omens.clone(),
+                    n,
+                );
                 *simulation_state = Some(state);
             }
 
             if let Some(sim_state) = simulation_state {
                 match &*sim_state.status.lock().unwrap() {
                     SimStatus::Done { results } => {
-                        let affix_groups = results
-                            .iter()
-                            .map(|(&tier_id, &count)| (&tiers[tier_id], count))
-                            .sorted_unstable_by_key(|(tier, _)| {
-                                (tier.affix, &tier.mod_id, tier.ilvl)
-                            })
-                            .chunk_by(|(tier, _)| tier.affix);
-
-                        ScrollArea::new([false, true]).show(ui, |ui| {
-                            for (affix, mod_group) in &affix_groups {
-                                ui.heading(format!("{:?}", affix));
-                                Grid::new(format!("results_grid_{:?}", affix))
-                                    .num_columns(2)
-                                    .show(ui, |ui| {
-                                        for (&mod_id, group) in
-                                            &mod_group.chunk_by(|(tier, _)| &tier.mod_id)
-                                        {
-                                            let modifier = &mods[mod_id];
-                                            ui.label(&modifier.group);
-
-                                            let tier_counts = group.collect::<Vec<_>>();
-                                            Grid::new(format!("results_grid_{}", modifier.group))
-                                                .num_columns(tier_counts.len())
-                                                .show(ui, |ui| {
-                                                    // Ilvls on top row
-                                                    tier_counts.iter().for_each(|(tier, _)| {
-                                                        ui.label(format!("{}", tier.ilvl));
-                                                    });
-                                                    ui.end_row();
-
-                                                    // Roll % on bottom row
-                                                    tier_counts.into_iter().for_each(
-                                                        |(_, count)| {
-                                                            ui.label(format!(
-                                                                "{:.1}%",
-                                                                (count as f32 / n as f32) * 100.
-                                                            ));
-                                                        },
-                                                    );
-                                                });
-
-                                            ui.end_row();
-                                        }
-                                    });
-                            }
-                        });
+                        display_sim_results(ui, results);
                     }
                     SimStatus::Running { iterations_done } => {
                         ui.spinner();
@@ -473,9 +310,201 @@ impl MyEguiApp {
                     }
                 }
             }
-            ui.label(format!("{:?}", simulation_state))
         });
     }
+
+    fn strategy_builder(&mut self, ctx: &egui::Context) {
+        CentralPanel::default().show(ctx, |ui| {
+            //
+
+            let mut strategy = Strategy(vec![]);
+
+            // // Condition
+            // let condition = Condition {
+            //     rarity: {
+            //         // Rarity dropdown here
+            //     },
+            //     groups: {
+            //         // Condition groups
+            //         vec![ConditionGroup {}]
+            //     },
+            // };
+
+            // Action
+        });
+    }
+}
+
+/// A grid of all the mods that can roll on the item with some checkboxes to let the user modify
+/// the item
+fn display_mod_select_grid(ui: &mut Ui, item: &mut ItemState) {
+    let tiers = TIERS_HV.get().unwrap();
+    let mods = MODS_HV.get().unwrap();
+
+    let candidate_tiers = get_valid_mods_for_item(item);
+
+    let affix_groups = candidate_tiers
+        .iter()
+        .map(|&tier_id| &tiers[tier_id])
+        .sorted_unstable_by_key(|tier| (&tier.affix, &tier.mod_id, &tier.ilvl))
+        .chunk_by(|tier| &tier.affix);
+
+    for (affix, group) in &affix_groups {
+        let mod_groups = group.chunk_by(|tier| &tier.mod_id);
+
+        ui.heading(format!("{:?}", affix));
+
+        Grid::new(format!("affix_grid_{:?}", affix))
+            .num_columns(3)
+            .show(ui, |ui| {
+                for (&mod_id, group) in &mod_groups {
+                    ui.label(&mods[mod_id].group);
+
+                    // Tier ilvls
+                    let item_tier = item
+                        .mods
+                        .iter()
+                        .copied()
+                        .find(|&tier_id| tiers[tier_id].mod_id == mod_id);
+
+                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                        // https://github.com/emilk/egui/issues/2247
+                        // Right alignment not supported in Grid yet, so use right-to-left
+                        // & reversed element creation instead
+                        let group = group.collect::<Vec<_>>();
+                        for tier in group.into_iter().rev() {
+                            let group_tier_id = tiers.get_opaque(&tier.id);
+
+                            let label_text = format!("{:?}", tier.ilvl);
+
+                            let mut selected = item.mods.contains(&group_tier_id);
+                            let was_selected = selected;
+                            ui.add(Checkbox::new(&mut selected, label_text));
+
+                            if was_selected != selected {
+                                if !selected {
+                                    // Mod unselected
+                                    item.mods.retain(|&tier_id| tier_id != group_tier_id);
+                                } else if item_tier.is_some() {
+                                    // Mod tier swapped
+                                    item.mods.retain(|&tier_id| tiers[tier_id].mod_id != mod_id);
+                                    item.mods.push(group_tier_id);
+                                } else if !item.has_room(tier.affix) {
+                                    // If we're already at max affixes, do nothing
+                                } else {
+                                    // Add a new mod
+                                    item.mods.push(group_tier_id);
+                                }
+                            }
+                        }
+                    });
+
+                    // Tags
+                    let modifier = &mods[mod_id];
+                    ui.horizontal(|ui| {
+                        for tag in &modifier.tags {
+                            ui.label(tag);
+                        }
+                    });
+
+                    ui.end_row();
+                }
+            });
+    }
+}
+
+/// Start a crafting simulation in a new thread
+fn run_sim(
+    base_item: ItemState,
+    currency: CurrencyType,
+    omens: HashSet<Omen>,
+    num_iters: u64,
+) -> SimState {
+    let candidate_tiers = get_valid_mods_for_item(&base_item);
+
+    let status = Arc::new(Mutex::new(SimStatus::Running { iterations_done: 0 }));
+    SimState {
+        base_item: base_item.clone(),
+        status: status.clone(),
+        handle: thread::spawn({
+            move || {
+                let mut results = HashMap::<_, usize>::new();
+                let before_mods = base_item.mods.iter().copied().collect::<HashSet<_>>();
+                for _ in 0..num_iters {
+                    // Apply the currency
+                    let mut item = base_item.clone();
+                    currency.craft(&mut item, &candidate_tiers, &omens);
+
+                    // Figure out which mod was added
+                    let after_mods = item.mods.iter().copied().collect::<HashSet<_>>();
+                    let added = after_mods.difference(&before_mods);
+                    for tier_id in added {
+                        *results.entry(*tier_id).or_default() += 1;
+                    }
+
+                    // Update status
+                    let mut status = status.lock().unwrap();
+                    let SimStatus::Running { iterations_done } = &mut *status else {
+                        unreachable!();
+                    };
+                    *iterations_done += 1;
+                }
+
+                // Give the results back
+                let mut status = status.lock().unwrap();
+                *status = SimStatus::Done { results };
+            }
+        }),
+    }
+}
+
+/// A grid showing the % chance for each mod to roll
+fn display_sim_results(ui: &mut Ui, results: &HashMap<OpaqueIndex<Tier>, usize>) {
+    let tiers = TIERS_HV.get().unwrap();
+    let mods = MODS_HV.get().unwrap();
+
+    let total_iters = results.values().sum::<usize>();
+
+    let affix_groups = results
+        .iter()
+        .map(|(&tier_id, &count)| (&tiers[tier_id], count))
+        .sorted_unstable_by_key(|(tier, _)| (tier.affix, &tier.mod_id, tier.ilvl))
+        .chunk_by(|(tier, _)| tier.affix);
+
+    ScrollArea::new([false, true]).show(ui, |ui| {
+        for (affix, mod_group) in &affix_groups {
+            ui.heading(format!("{:?}", affix));
+            Grid::new(format!("results_grid_{:?}", affix))
+                .num_columns(2)
+                .show(ui, |ui| {
+                    for (&mod_id, group) in &mod_group.chunk_by(|(tier, _)| &tier.mod_id) {
+                        let modifier = &mods[mod_id];
+                        ui.label(&modifier.group);
+
+                        let tier_counts = group.collect::<Vec<_>>();
+                        Grid::new(format!("results_grid_{}", modifier.group))
+                            .num_columns(tier_counts.len())
+                            .show(ui, |ui| {
+                                // Ilvls on top row
+                                tier_counts.iter().for_each(|(tier, _)| {
+                                    ui.label(format!("{}", tier.ilvl));
+                                });
+                                ui.end_row();
+
+                                // Roll % on bottom row
+                                tier_counts.into_iter().for_each(|(_, count)| {
+                                    ui.label(format!(
+                                        "{:.1}%",
+                                        (count as f32 / total_iters as f32) * 100.
+                                    ));
+                                });
+                            });
+
+                        ui.end_row();
+                    }
+                });
+        }
+    });
 }
 
 fn main() {

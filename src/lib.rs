@@ -21,6 +21,7 @@ pub mod parser_poe2db;
 pub mod parser_stat_desc;
 pub mod strategy;
 pub mod types;
+pub mod ui;
 
 pub static FORMATTERS: OnceLock<StatFormatters> = OnceLock::new();
 // pub static TIERS: OnceLock<HashMap<TierId, Tier>> = OnceLock::new();
