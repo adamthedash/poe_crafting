@@ -325,20 +325,35 @@ impl MyEguiApp {
 
         let candidate_tiers = get_valid_mods_for_item(&self.base_item);
         let candidate_mods = candidate_tiers
-            .into_iter()
-            .sorted_unstable_by_key(|&tier_id| {
+            .iter()
+            .sorted_unstable_by_key(|&&tier_id| {
                 let tier = &tiers[tier_id];
 
                 (tier.mod_id, tier.ilvl)
             })
-            .chunk_by(|&tier_id| {
+            .chunk_by(|&&tier_id| {
                 let tier = &tiers[tier_id];
 
                 tier.mod_id
             });
         let candidate_mods = candidate_mods
             .into_iter()
-            .map(|(mod_id, group)| (mod_id, group.collect::<Vec<_>>()))
+            .map(|(mod_id, group)| (mod_id, group.copied().collect::<Vec<_>>()))
+            .collect::<Vec<_>>();
+
+        let currencies = CURRENCIES
+            .iter()
+            .chain(ESSENCES.get().unwrap().iter().sorted_unstable_by_key(|e| {
+                let name = e.name();
+                let sort = match name.split(" ").next().unwrap() {
+                    "Lesser" => 0,
+                    "Essence" => 1,
+                    "Greater" => 2,
+                    "Perfect" => 3,
+                    _ => 4,
+                };
+                (sort, name)
+            }))
             .collect::<Vec<_>>();
 
         CentralPanel::default().show(ctx, |ui| {
@@ -356,8 +371,50 @@ impl MyEguiApp {
                     let mut do_action = action.is_some();
                     ui.checkbox(&mut do_action, "Craft");
                     if do_action {
+                        if action.is_none() {
+                            // Default selection
+                            *action = Some((HashSet::new(), CurrencyType::Transmute));
+                        }
                         // Show currency dropdown
+                        let Some((selected_omens, currency)) = action else {
+                            unreachable!()
+                        };
+
+                        // Select Currency
+                        let old_selected =
+                            dropdown(ui, currency, &currencies, "currency_select", |c| {
+                                c.name().to_string()
+                            });
+                        if old_selected.is_some() {
+                            // Currency changed, clear omens
+                            selected_omens.clear();
+                        }
+
+                        // Select Omens
+                        let mut omens = currency.possible_omens().into_iter().collect::<Vec<_>>();
+                        omens.sort();
+
+                        ui.horizontal(|ui| {
+                            for omen in omens {
+                                // Individual omen buttons
+                                let mut selected = selected_omens.contains(&omen);
+                                let old_selected = selected;
+                                ui.checkbox(&mut selected, format!("{:?}", omen));
+                                match (old_selected, selected) {
+                                    (true, false) => {
+                                        // Un-selected
+                                        selected_omens.remove(&omen);
+                                    }
+                                    (false, true) => {
+                                        // Selected
+                                        selected_omens.insert(omen);
+                                    }
+                                    _ => (),
+                                }
+                            }
+                        });
                     } else {
+                        // No action - end state
                         *action = None;
                     }
 
