@@ -43,7 +43,7 @@ struct SimState {
 enum Page {
     ItemBuilder,
     CraftProbability {
-        selected_currency: usize,
+        selected_currency: CurrencyType,
         selected_omens: HashSet<Omen>,
         simulation_state: Option<SimState>,
         num_iters_exp: u32,
@@ -60,7 +60,7 @@ impl Page {
         vec![
             ItemBuilder,
             CraftProbability {
-                selected_currency: 0,
+                selected_currency: CurrencyType::Transmute,
                 selected_omens: HashSet::new(),
                 simulation_state: None,
                 num_iters_exp: 5,
@@ -101,8 +101,8 @@ impl Default for MyEguiApp {
 
 impl MyEguiApp {
     fn new(_cc: &eframe::CreationContext<'_>) -> Self {
-        let data_root = Path::new("/home/adam/repos/data/poe"); // laptop
-        // let data_root = Path::new("/mnt/nvme_4tb/programming/data/poe2"); // desktop
+        // let data_root = Path::new("/home/adam/repos/data/poe"); // laptop
+        let data_root = Path::new("/mnt/nvme_4tb/programming/data/poe2"); // desktop
         init(data_root);
 
         // Customize egui here with cc.egui_ctx.set_fonts and cc.egui_ctx.set_visuals.
@@ -239,26 +239,22 @@ impl MyEguiApp {
 
         egui::CentralPanel::default().show(ctx, |ui| {
             // Select Currency
-            let old_selected = *selected_currency;
-            ComboBox::from_id_salt("currency_select").show_index(
-                ui,
-                selected_currency,
-                currencies.len(),
-                |i| currencies[i].name(),
-            );
-            let currency = currencies[*selected_currency];
-            if old_selected != *selected_currency {
+            let old_selected =
+                dropdown(ui, selected_currency, &currencies, "currency_select", |c| {
+                    c.name().to_string()
+                });
+            if old_selected.is_some() {
                 // Currency changed, clear omens
                 selected_omens.clear();
             }
 
             // Select Omens
-            let mut omens = currency
+            let mut omens = selected_currency
                 .possible_omens()
                 .into_iter()
                 // Only omens that can be used
                 .filter(|&omen| {
-                    currency.can_be_used(
+                    selected_currency.can_be_used(
                         &self.base_item,
                         &candidate_tiers,
                         &HashSet::from_iter(std::iter::once(omen)),
@@ -299,7 +295,7 @@ impl MyEguiApp {
             if ui.button("Go!").clicked() {
                 let state = run_sim(
                     self.base_item.clone(),
-                    currency.clone(),
+                    selected_currency.clone(),
                     selected_omens.clone(),
                     n,
                 );
@@ -351,7 +347,21 @@ impl MyEguiApp {
                 .iter_mut()
                 .enumerate()
                 .flat_map(|(i, (condition, action))| {
-                    show_strategy_step(ui, &format!("{i}"), condition, &candidate_mods).then_some(i)
+                    // Condition
+                    let remove =
+                        show_strategy_step(ui, &format!("{i}"), condition, &candidate_mods)
+                            .then_some(i);
+
+                    // Action
+                    let mut do_action = action.is_some();
+                    ui.checkbox(&mut do_action, "Craft");
+                    if do_action {
+                        // Show currency dropdown
+                    } else {
+                        *action = None;
+                    }
+
+                    remove
                 })
                 .next();
 

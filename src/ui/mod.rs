@@ -18,13 +18,17 @@ pub fn rarity_dropdown(ui: &mut Ui, value: &mut Rarity, key: &str) -> Option<Rar
 }
 
 /// Dropdown which returns the previously selected value on change
-pub fn dropdown<T: Clone + PartialEq>(
+pub fn dropdown<T, F>(
     ui: &mut Ui,
     value: &mut T,
     values: &[&T],
     key: &str,
-    formatter: fn(&T) -> String,
-) -> Option<T> {
+    formatter: F,
+) -> Option<T>
+where
+    T: Clone + PartialEq,
+    F: Fn(&T) -> String,
+{
     let mut new_val = &*value;
 
     ComboBox::from_id_salt(key)
