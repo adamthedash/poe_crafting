@@ -6,7 +6,10 @@ use std::{
 };
 
 use eframe::egui;
-use egui::{Align, CentralPanel, Checkbox, ComboBox, DragValue, Grid, Layout, ScrollArea, Ui};
+use egui::{
+    Align, CentralPanel, Checkbox, Color32, ComboBox, DragValue, Frame, Grid, Layout, ScrollArea,
+    Ui,
+};
 use itertools::Itertools;
 use poe_crafting::{
     ESSENCES, ITEM_TIERS, MODS_HV, TIERS_HV,
@@ -14,9 +17,9 @@ use poe_crafting::{
     hashvec::OpaqueIndex,
     init,
     item_state::{ItemState, Rarity, get_valid_mods_for_item},
-    strategy::{Condition, ConditionGroup, Strategy},
-    types::{Affix, Omen, Tier},
-    ui::{dropdown, rarity_dropdown},
+    strategy::{Condition, ConditionGroup, ModifierCondition, Strategy},
+    types::{Affix, Modifier, Omen, Tier},
+    ui::{dropdown, multi_select_checkboxes, range_selector, rarity_dropdown},
 };
 
 #[derive(Debug)]
@@ -45,7 +48,9 @@ enum Page {
         simulation_state: Option<SimState>,
         num_iters_exp: u32,
     },
-    StrategyBuilder,
+    StrategyBuilder {
+        strategy: Strategy,
+    },
 }
 
 impl Page {
@@ -60,7 +65,9 @@ impl Page {
                 simulation_state: None,
                 num_iters_exp: 5,
             },
-            StrategyBuilder,
+            StrategyBuilder {
+                strategy: Strategy(vec![]),
+            },
         ]
     }
 
@@ -68,7 +75,7 @@ impl Page {
         match self {
             Page::ItemBuilder => "Item Builder",
             Page::CraftProbability { .. } => "Craft Probabilities",
-            Page::StrategyBuilder => "Strategy Builder",
+            Page::StrategyBuilder { .. } => "Strategy Builder",
         }
     }
 }
@@ -94,8 +101,8 @@ impl Default for MyEguiApp {
 
 impl MyEguiApp {
     fn new(_cc: &eframe::CreationContext<'_>) -> Self {
-        // let data_root = Path::new("/home/adam/repos/data/poe"); // laptop
-        let data_root = Path::new("/mnt/nvme_4tb/programming/data/poe2"); // desktop
+        let data_root = Path::new("/home/adam/repos/data/poe"); // laptop
+        // let data_root = Path::new("/mnt/nvme_4tb/programming/data/poe2"); // desktop
         init(data_root);
 
         // Customize egui here with cc.egui_ctx.set_fonts and cc.egui_ctx.set_visuals.
@@ -121,7 +128,7 @@ impl eframe::App for MyEguiApp {
         match self.page {
             Page::ItemBuilder => self.item_builder(ctx),
             Page::CraftProbability { .. } => self.craft_probability(ctx),
-            Page::StrategyBuilder => self.strategy_builder(ctx),
+            Page::StrategyBuilder { .. } => self.strategy_builder(ctx),
         }
     }
 }
@@ -169,7 +176,7 @@ impl MyEguiApp {
 
                 // Rarity
                 ui.label("Rarity");
-                let old_rarity = rarity_dropdown(ui, &mut self.base_item.rarity);
+                let old_rarity = rarity_dropdown(ui, &mut self.base_item.rarity, "rarity_dropdown");
                 ui.end_row();
 
                 if old_rarity.is_some() {
@@ -314,25 +321,241 @@ impl MyEguiApp {
     }
 
     fn strategy_builder(&mut self, ctx: &egui::Context) {
+        let tiers = TIERS_HV.get().unwrap();
+
+        let Page::StrategyBuilder { strategy } = &mut self.page else {
+            unreachable!()
+        };
+
+        let candidate_tiers = get_valid_mods_for_item(&self.base_item);
+        let candidate_mods = candidate_tiers
+            .into_iter()
+            .sorted_unstable_by_key(|&tier_id| {
+                let tier = &tiers[tier_id];
+
+                (tier.mod_id, tier.ilvl)
+            })
+            .chunk_by(|&tier_id| {
+                let tier = &tiers[tier_id];
+
+                tier.mod_id
+            });
+        let candidate_mods = candidate_mods
+            .into_iter()
+            .map(|(mod_id, group)| (mod_id, group.collect::<Vec<_>>()))
+            .collect::<Vec<_>>();
+
         CentralPanel::default().show(ctx, |ui| {
-            //
+            let to_remove = strategy
+                .0
+                .iter_mut()
+                .enumerate()
+                .flat_map(|(i, (condition, action))| {
+                    show_strategy_step(ui, &format!("{i}"), condition, &candidate_mods).then_some(i)
+                })
+                .next();
 
-            let mut strategy = Strategy(vec![]);
+            if let Some(index) = to_remove {
+                strategy.0.remove(index);
+            }
 
-            // // Condition
-            // let condition = Condition {
-            //     rarity: {
-            //         // Rarity dropdown here
-            //     },
-            //     groups: {
-            //         // Condition groups
-            //         vec![ConditionGroup {}]
-            //     },
-            // };
+            // Button to add a new condition
+            if ui.button("Add new condition").clicked() {
+                strategy.0.push((
+                    Condition {
+                        rarity: Rarity::Normal,
+                        groups: vec![],
+                    },
+                    None,
+                ));
+            }
 
             // Action
         });
     }
+}
+
+fn show_strategy_step(
+    ui: &mut Ui,
+    key: &str,
+    condition: &mut Condition,
+    candidate_mods: &[(OpaqueIndex<Modifier>, Vec<OpaqueIndex<Tier>>)],
+) -> bool {
+    Frame::default()
+        .fill(Color32::DARK_RED)
+        .show(ui, |ui| {
+            // Button to remove this step
+            let remove = ui.button("X").clicked();
+
+            rarity_dropdown(ui, &mut condition.rarity, &format!("rarity_{key}"));
+
+            // Condition groups
+            let to_remove = condition
+                .groups
+                .iter_mut()
+                .enumerate()
+                .flat_map(|(i, group)| {
+                    show_strategy_group(ui, &format!("{key}_{i}"), group, candidate_mods)
+                        .then_some(i)
+                })
+                .next();
+
+            if let Some(index) = to_remove {
+                condition.groups.remove(index);
+            }
+
+            // Button to add a new group
+            if ui.button("Add new group").clicked() {
+                condition.groups.push(ConditionGroup::Count {
+                    count: 0..=1,
+                    mods: vec![],
+                });
+            }
+
+            remove
+        })
+        .inner
+}
+
+fn show_strategy_group(
+    ui: &mut Ui,
+    key: &str,
+    group: &mut ConditionGroup,
+    candidate_mods: &[(OpaqueIndex<Modifier>, Vec<OpaqueIndex<Tier>>)],
+) -> bool {
+    Frame::default()
+        .fill(Color32::DARK_GREEN)
+        .show(ui, |ui| {
+            // Button to remove this group
+            let remove = ui.button("X").clicked();
+
+            // Dropdown with ConditionGroup type
+            let mut dropdown_type = match group {
+                ConditionGroup::Count { .. } => "Count",
+                ConditionGroup::Not(_) => "Not",
+                ConditionGroup::AffixCount { .. } => "Affix Count",
+            };
+            let group_types = ["Count", "Not", "Affix Count"].iter().collect::<Vec<_>>();
+            let old = dropdown(
+                ui,
+                &mut dropdown_type,
+                &group_types,
+                &format!("dropdown_cond_group_type_{key}"),
+                |t| t.to_string(),
+            );
+            if old.is_some() {
+                *group = match dropdown_type {
+                    "Count" => ConditionGroup::Count {
+                        count: 0..=1,
+                        mods: vec![],
+                    },
+                    "Not" => ConditionGroup::Not(HashSet::new()),
+                    "Affix Count" => ConditionGroup::AffixCount {
+                        suffixes: 0..=3,
+                        prefixes: 0..=3,
+                        affixes: 0..=6,
+                    },
+                    _ => unreachable!(),
+                }
+            }
+
+            match group {
+                ConditionGroup::Count {
+                    count,
+                    mods: mod_conds,
+                } => {
+                    range_selector(ui, count, 0..=100);
+
+                    let to_remove = mod_conds
+                        .iter_mut()
+                        .enumerate()
+                        .flat_map(|(i, mod_condition)| {
+                            show_strategy_mod(
+                                ui,
+                                &format!("{key}_{i}"),
+                                mod_condition,
+                                candidate_mods,
+                            )
+                            .then_some(i)
+                        })
+                        .next();
+
+                    if let Some(index) = to_remove {
+                        mod_conds.remove(index);
+                    }
+
+                    if ui.button("Add mod").clicked() {
+                        mod_conds.push(ModifierCondition {
+                            mod_group: candidate_mods.first().unwrap().0,
+                            levels: vec![],
+                        });
+                    }
+                }
+                ConditionGroup::Not(hash_set) => todo!(),
+                ConditionGroup::AffixCount {
+                    suffixes,
+                    prefixes,
+                    affixes,
+                } => todo!(),
+            }
+
+            remove
+        })
+        .inner
+}
+
+fn show_strategy_mod(
+    ui: &mut Ui,
+    key: &str,
+    mod_condition: &mut ModifierCondition,
+    candidate_mods: &[(OpaqueIndex<Modifier>, Vec<OpaqueIndex<Tier>>)],
+) -> bool {
+    ui.horizontal(|ui| {
+        // Button to remove this mod
+        let remove = ui.button("X").clicked();
+
+        // Show mods that can roll on this item
+        let mod_groups = candidate_mods
+            .iter()
+            .map(|(mod_id, _)| mod_id)
+            .collect::<Vec<_>>();
+
+        let old = dropdown(
+            ui,
+            &mut mod_condition.mod_group,
+            &mod_groups,
+            &format!("dropdown_mod_group_{key}"),
+            |mod_id| {
+                let mods = MODS_HV.get().unwrap();
+                mods[*mod_id].group.clone()
+            },
+        );
+
+        if old.is_some() {
+            // Mod changed, clear selected ilvls
+            mod_condition.levels.clear();
+        }
+
+        // Checkboxes for ilvls
+        let group_ilvls = candidate_mods
+            .iter()
+            .find(|(mod_id, _)| *mod_id == mod_condition.mod_group)
+            .unwrap()
+            .1
+            .iter()
+            .map(|&tier_id| {
+                let tiers = TIERS_HV.get().unwrap();
+                &tiers[tier_id].ilvl
+            })
+            .collect::<Vec<_>>();
+
+        multi_select_checkboxes(ui, &mut mod_condition.levels, &group_ilvls, |ilvl| {
+            format!("{}", ilvl)
+        });
+
+        remove
+    })
+    .inner
 }
 
 /// A grid of all the mods that can roll on the item with some checkboxes to let the user modify

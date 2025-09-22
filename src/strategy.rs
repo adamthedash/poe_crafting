@@ -9,7 +9,7 @@ use crate::{
 };
 
 /// Eg. LocalAttackSpeed T2-T1
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ModifierCondition {
     pub mod_group: OpaqueIndex<Modifier>,
     pub levels: Vec<u32>,
@@ -21,7 +21,7 @@ impl ModifierCondition {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum ConditionGroup {
     Count {
         count: RangeInclusive<usize>,
@@ -79,6 +79,7 @@ impl ConditionGroup {
 }
 
 /// Represents the state of an item.
+#[derive(Debug)]
 pub struct Condition {
     pub rarity: Rarity,
     /// All of these groups must be true
@@ -91,6 +92,7 @@ impl Condition {
     }
 }
 
+#[derive(Debug)]
 pub struct Strategy(pub Vec<(Condition, Option<(HashSet<Omen>, CurrencyType)>)>);
 
 impl Strategy {

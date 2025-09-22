@@ -1,21 +1,18 @@
-use std::{
-    fmt::{Debug, Display},
-    mem::replace,
-};
+use std::{mem::replace, ops::RangeInclusive};
 
-use egui::{ComboBox, Ui};
+use egui::{ComboBox, DragValue, Ui};
 
 use crate::item_state::Rarity;
 
 /// Dropdown menu for Rarity. Returns the previous value if it has changed on this frame.
-pub fn rarity_dropdown(ui: &mut Ui, value: &mut Rarity) -> Option<Rarity> {
+pub fn rarity_dropdown(ui: &mut Ui, value: &mut Rarity, key: &str) -> Option<Rarity> {
     dropdown(
         ui,
         value,
         &[Rarity::Normal, Rarity::Magic, Rarity::Rare]
             .iter()
             .collect::<Vec<_>>(),
-        "combo_rarity",
+        key,
         |r| format!("{:?}", r),
     )
 }
@@ -44,4 +41,49 @@ pub fn dropdown<T: Clone + PartialEq>(
     } else {
         None
     }
+}
+
+/// Selection for an inclusive range
+pub fn range_selector(
+    ui: &mut Ui,
+    value: &mut RangeInclusive<usize>,
+    possible_range: RangeInclusive<usize>,
+) {
+    ui.horizontal(|ui| {
+        let mut min = *value.start();
+        ui.label("Min");
+        ui.add(DragValue::new(&mut min).range(possible_range.clone()));
+
+        let mut max = *value.end();
+        ui.label("Max");
+        ui.add(DragValue::new(&mut max).range(possible_range));
+
+        *value = min..=max;
+    });
+}
+
+pub fn multi_select_checkboxes<T: Clone + PartialEq>(
+    ui: &mut Ui,
+    values: &mut Vec<T>,
+    options: &[&T],
+    formatter: fn(&T) -> String,
+) {
+    ui.horizontal(|ui| {
+        for &option in options {
+            let mut selected = values.contains(option);
+            let old_selected = selected;
+            ui.checkbox(&mut selected, formatter(option));
+            match (old_selected, selected) {
+                (true, false) => {
+                    // Un-selected
+                    values.retain(|val| val != option);
+                }
+                (false, true) => {
+                    // Selected
+                    values.push(option.clone());
+                }
+                _ => (),
+            }
+        }
+    });
 }
