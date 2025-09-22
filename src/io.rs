@@ -1,4 +1,9 @@
-use serde::{Deserialize, Serialize, de::value::StringDeserializer};
+use std::{
+    fs::{self, File},
+    path::Path,
+};
+
+use serde::{Deserialize, Serialize};
 
 use crate::{
     ESSENCES, MODS_HV, TIERS_HV,
@@ -71,7 +76,7 @@ impl<'de> Deserialize<'de> for CurrencyType {
         CURRENCIES
             .iter()
             .chain(ESSENCES.get().unwrap())
-            .find(|c| c.name() == &name)
+            .find(|c| c.name() == name)
             .cloned()
             .ok_or_else(|| serde::de::Error::custom(format!("Unknown currency: {name}")))
     }
@@ -79,6 +84,25 @@ impl<'de> Deserialize<'de> for CurrencyType {
 
 #[derive(Serialize, Deserialize)]
 pub struct SavedStrategy {
-    base_item: ItemState,
-    strategy: Strategy,
+    pub base_item: ItemState,
+    pub strategy: Strategy,
+}
+
+impl SavedStrategy {
+    /// Serialise the strategy to a JSON file
+    pub fn save(&self, path: &Path) {
+        let mut file = fs::OpenOptions::new()
+            .write(true)
+            .truncate(true)
+            .create(true)
+            .open(path)
+            .unwrap();
+        serde_json::to_writer(&mut file, self).unwrap();
+    }
+
+    /// Load the strategy from a JSON file
+    pub fn load(path: &Path) -> Self {
+        let file = File::open(path).unwrap();
+        serde_json::from_reader(file).unwrap()
+    }
 }

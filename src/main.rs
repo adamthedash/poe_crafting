@@ -62,7 +62,7 @@ impl eframe::App for MyEguiApp {
                 currency_sim::show_page(&mut self.page, ctx, &self.base_item);
             }
             Page::StrategyBuilder { .. } => {
-                strategy_sim::show_page(&mut self.page, ctx, &self.base_item);
+                strategy_sim::show_page(&mut self.page, ctx, &mut self.base_item);
             }
         }
     }

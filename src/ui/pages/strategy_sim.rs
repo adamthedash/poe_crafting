@@ -1,4 +1,4 @@
-use crate::{strategy::Strategy, types::Omen, ui::Page};
+use crate::{io::SavedStrategy, strategy::Strategy, types::Omen, ui::Page};
 use std::{
     collections::HashSet,
     path::Path,
@@ -281,7 +281,7 @@ fn show_strategy_mod(
     .inner
 }
 
-pub fn show_page(page_state: &mut Page, ctx: &egui::Context, item: &ItemState) {
+pub fn show_page(page_state: &mut Page, ctx: &egui::Context, item: &mut ItemState) {
     let tiers = TIERS_HV.get().unwrap();
 
     let Page::StrategyBuilder {
@@ -328,11 +328,17 @@ pub fn show_page(page_state: &mut Page, ctx: &egui::Context, item: &ItemState) {
     CentralPanel::default().show(ctx, |ui| {
         if ui.button("Save").clicked() {
             // Serialise strategy to JSON
-            strategy.save(Path::new("strat.json"));
+            SavedStrategy {
+                base_item: item.clone(),
+                strategy: strategy.clone(),
+            }
+            .save(Path::new("strat.json"));
         }
         if ui.button("Load").clicked() {
-            // Load strategy, verify that it's valid?
-            *strategy = Strategy::load(Path::new("strat.json"));
+            // Load strategy, TODO: verify that it's valid?
+            let saved_strategy = SavedStrategy::load(Path::new("strat.json"));
+            *strategy = saved_strategy.strategy;
+            *item = saved_strategy.base_item;
         }
 
         let to_remove = strategy

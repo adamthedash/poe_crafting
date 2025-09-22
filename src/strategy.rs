@@ -1,8 +1,6 @@
 use std::{
     collections::HashSet,
-    fs::{self, File},
     ops::RangeInclusive,
-    path::Path,
 };
 
 use serde::{Deserialize, Serialize};
@@ -123,21 +121,5 @@ impl Strategy {
             .filter(|(_, (cond, _))| cond.check(item))
             .map(|(i, _)| i)
             .next()
-    }
-
-    /// Serialise the strategy to a file
-    pub fn save(&self, path: &Path) {
-        let mut file = fs::OpenOptions::new()
-            .write(true)
-            .truncate(true)
-            .create(true)
-            .open(path)
-            .unwrap();
-        serde_json::to_writer(&mut file, self).unwrap();
-    }
-
-    pub fn load(path: &Path) -> Self {
-        let file = File::open(path).unwrap();
-        serde_json::from_reader(file).unwrap()
     }
 }
