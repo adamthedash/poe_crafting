@@ -695,7 +695,7 @@ impl Currency for PerfectChaos {
 }
 
 /// Lesser to Greater Essences
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct Essence {
     pub name: String,
     pub tiers: HashMap<BaseItemId, Vec<OpaqueIndex<Tier>>>,
@@ -761,7 +761,13 @@ impl Currency for Essence {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+impl PartialEq for Essence {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct PerfectEssence {
     pub name: String,
     pub tiers: HashMap<BaseItemId, Vec<OpaqueIndex<Tier>>>,
@@ -901,6 +907,12 @@ impl Currency for PerfectEssence {
     }
 }
 
+impl PartialEq for PerfectEssence {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum CurrencyType {
     Transmute,
@@ -923,7 +935,6 @@ pub enum CurrencyType {
     Essence(Essence),
     PerfectEssence(PerfectEssence),
 }
-
 
 impl Currency for CurrencyType {
     fn name(&self) -> &str {
@@ -1029,7 +1040,7 @@ impl CurrencyType {
             _ => vec![],
         };
 
-        HashSet::from_iter(omens.into_iter())
+        HashSet::from_iter(omens)
     }
 }
 
