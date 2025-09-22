@@ -28,7 +28,7 @@ pub enum ConditionGroup {
         mods: Vec<ModifierCondition>,
     },
     /// None of these
-    Not(HashSet<OpaqueIndex<Modifier>>),
+    Not(Vec<OpaqueIndex<Modifier>>),
     AffixCount {
         suffixes: RangeInclusive<usize>,
         prefixes: RangeInclusive<usize>,
@@ -60,7 +60,9 @@ impl ConditionGroup {
                     .map(|tier| tier.mod_id)
                     .collect::<HashSet<_>>();
 
-                mod_groups.is_disjoint(&item_mod_groups)
+                !mod_groups
+                    .iter()
+                    .any(|mod_id| item_mod_groups.contains(mod_id))
             }
             ConditionGroup::AffixCount {
                 suffixes,
@@ -79,7 +81,7 @@ impl ConditionGroup {
 }
 
 /// Represents the state of an item.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Condition {
     pub rarity: Rarity,
     /// All of these groups must be true
@@ -92,7 +94,7 @@ impl Condition {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Strategy(pub Vec<(Condition, Option<(HashSet<Omen>, CurrencyType)>)>);
 
 impl Strategy {

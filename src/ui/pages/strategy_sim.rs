@@ -1,5 +1,9 @@
-use crate::ui::Page;
-use std::collections::HashSet;
+use crate::{strategy::Strategy, types::Omen, ui::Page};
+use std::{
+    collections::HashSet,
+    sync::{Arc, Mutex},
+    thread::{self, JoinHandle},
+};
 
 use crate::{
     ESSENCES, MODS_HV, TIERS_HV,
@@ -10,8 +14,35 @@ use crate::{
     types::{Modifier, Tier},
     ui::{dropdown, multi_select_checkboxes, omen_selection, range_selector, rarity_dropdown},
 };
-use egui::{self, CentralPanel, Color32, Frame, Ui};
+use egui::{self, CentralPanel, Color32, Frame, Grid, Ui};
 use itertools::Itertools;
+
+#[derive(Debug)]
+pub enum SimStatus {
+    InvalidCraft {
+        item: ItemState,
+        currency: CurrencyType,
+        omens: HashSet<Omen>,
+    },
+    NoMatchingState {
+        item: ItemState,
+    },
+    Running {
+        current_iters: usize,
+        total_iters: usize,
+    },
+    Done {
+        state_transitions: Vec<Vec<usize>>,
+    },
+}
+
+#[derive(Debug)]
+pub struct SimState {
+    base_item: ItemState,
+    strategy: Strategy,
+    handle: JoinHandle<()>,
+    status: Arc<Mutex<SimStatus>>,
+}
 
 fn show_strategy_step(
     ui: &mut Ui,
@@ -87,7 +118,7 @@ fn show_strategy_group(
                         count: 0..=1,
                         mods: vec![],
                     },
-                    "Not" => ConditionGroup::Not(HashSet::new()),
+                    "Not" => ConditionGroup::Not(vec![]),
                     "Affix Count" => ConditionGroup::AffixCount {
                         suffixes: 0..=3,
                         prefixes: 0..=3,
@@ -129,12 +160,65 @@ fn show_strategy_group(
                         });
                     }
                 }
-                ConditionGroup::Not(hash_set) => todo!(),
+                ConditionGroup::Not(mod_ids) => {
+                    // Show mods that can roll on this item
+                    let mod_groups = candidate_mods
+                        .iter()
+                        .map(|(mod_id, _)| mod_id)
+                        .collect::<Vec<_>>();
+
+                    let to_remove = mod_ids
+                        .iter_mut()
+                        .enumerate()
+                        .flat_map(|(i, mod_id)| {
+                            ui.horizontal(|ui| {
+                                // Button to remove this mod
+                                let remove = ui.button("X").clicked();
+
+                                dropdown(
+                                    ui,
+                                    mod_id,
+                                    &mod_groups,
+                                    &format!("dropdown_mod_group_{key}_{i}"),
+                                    |mod_id| {
+                                        let mods = MODS_HV.get().unwrap();
+                                        mods[*mod_id].group.clone()
+                                    },
+                                );
+
+                                remove
+                            })
+                            .inner
+                            .then_some(i)
+                        })
+                        .next();
+
+                    if let Some(index) = to_remove {
+                        mod_ids.remove(index);
+                    }
+
+                    if ui.button("Add mod").clicked() {
+                        mod_ids.push(candidate_mods.first().unwrap().0);
+                    }
+                }
                 ConditionGroup::AffixCount {
-                    suffixes,
                     prefixes,
+                    suffixes,
                     affixes,
-                } => todo!(),
+                } => {
+                    ui.horizontal(|ui| {
+                        ui.label("Prefixes");
+                        range_selector(ui, prefixes, 0..=100);
+                    });
+                    ui.horizontal(|ui| {
+                        ui.label("Suffixes");
+                        range_selector(ui, suffixes, 0..=100);
+                    });
+                    ui.horizontal(|ui| {
+                        ui.label("Affixes");
+                        range_selector(ui, affixes, 0..=100);
+                    });
+                }
             }
 
             remove
@@ -199,7 +283,11 @@ fn show_strategy_mod(
 pub fn show_page(page_state: &mut Page, ctx: &egui::Context, item: &ItemState) {
     let tiers = TIERS_HV.get().unwrap();
 
-    let Page::StrategyBuilder { strategy } = page_state else {
+    let Page::StrategyBuilder {
+        strategy,
+        simulation_state,
+    } = page_state
+    else {
         unreachable!()
     };
 
@@ -300,40 +388,113 @@ pub fn show_page(page_state: &mut Page, ctx: &egui::Context, item: &ItemState) {
 
         // Strategy simulation
         if ui.button("Go!").clicked() {
-            let mut item = item.clone();
+            *simulation_state = Some(run_sim(
+                item.clone(),
+                strategy.clone(),
+                100,
+                &candidate_tiers,
+            ));
+        }
 
-            let mut state_transitions = vec![vec![0_usize; strategy.0.len()]; strategy.0.len()];
-            let mut finished_state = false;
-            let mut prev_state = None;
-            while let Some(index) = strategy.get(&item) {
-                // Keep track of state transitions
-                if let Some(prev) = prev_state {
-                    let row: &mut Vec<_> = &mut state_transitions[prev];
-                    row[index] += 1;
+        if let Some(sim_state) = simulation_state {
+            match &*sim_state.status.lock().unwrap() {
+                SimStatus::InvalidCraft {
+                    item,
+                    currency,
+                    omens,
+                } => {
+                    ui.label("Invalid craft:");
+                    ui.label(format!("{}", item));
+                    ui.label(format!("{} {:?}", currency.name(), omens));
                 }
-                prev_state = Some(index);
-
-                let Some((omens, currency)) = &strategy.0[index].1 else {
-                    // End step, break out
-                    finished_state = true;
-                    break;
-                };
-
-                assert!(
-                    currency.can_be_used(&item, &candidate_tiers, omens),
-                    "Currency cannot be used in current state!"
-                );
-
-                currency.craft(&mut item, &candidate_tiers, omens);
+                SimStatus::NoMatchingState { item } => {
+                    ui.label("No matching condition for item:");
+                    ui.label(format!("{}", item));
+                }
+                SimStatus::Running {
+                    current_iters,
+                    total_iters,
+                } => {
+                    ui.horizontal(|ui| {
+                        ui.spinner();
+                        ui.label(format!("{} / {}", current_iters, total_iters));
+                    });
+                }
+                SimStatus::Done { state_transitions } => {
+                    Grid::new("state_transitions_grid")
+                        .num_columns(state_transitions.len())
+                        .show(ui, |ui| {
+                            for row in state_transitions {
+                                for cell in row {
+                                    ui.label(format!("{cell}"));
+                                }
+                                ui.end_row();
+                            }
+                        });
+                }
             }
-
-            if !finished_state {
-                // Process exited because there was no matching condition
-                ui.label("No matching condition!");
-                println!("{}", item);
-            }
-
-            println!("{:#?}", state_transitions);
         }
     });
+}
+
+fn run_sim(
+    base_item: ItemState,
+    strategy: Strategy,
+    num_iters: usize,
+    candidate_tiers: &[OpaqueIndex<Tier>],
+) -> SimState {
+    let candidate_tiers = candidate_tiers.to_vec();
+    let status = Arc::new(Mutex::new(SimStatus::Running {
+        current_iters: 0,
+        total_iters: num_iters,
+    }));
+
+    SimState {
+        base_item: base_item.clone(),
+        strategy: strategy.clone(),
+        status: status.clone(),
+        handle: thread::spawn(move || {
+            let mut state_transitions = vec![vec![0_usize; strategy.0.len()]; strategy.0.len()];
+            for _ in 0..num_iters {
+                let mut item = base_item.clone();
+
+                let mut finished_state = false;
+                let mut prev_state = None;
+                while let Some(index) = strategy.get(&item) {
+                    // Keep track of state transitions
+                    if let Some(prev) = prev_state {
+                        let row: &mut Vec<_> = &mut state_transitions[prev];
+                        row[index] += 1;
+                    }
+                    prev_state = Some(index);
+
+                    let Some((omens, currency)) = &strategy.0[index].1 else {
+                        // End step, break out
+                        finished_state = true;
+                        break;
+                    };
+
+                    if !currency.can_be_used(&item, &candidate_tiers, omens) {
+                        // Condition matched but the currency can't be used on it
+                        *status.lock().unwrap() = SimStatus::InvalidCraft {
+                            item,
+                            currency: currency.clone(),
+                            omens: omens.clone(),
+                        };
+                        return;
+                    }
+
+                    currency.craft(&mut item, &candidate_tiers, omens);
+                }
+
+                if !finished_state {
+                    // Process exited because there was no matching condition
+                    *status.lock().unwrap() = SimStatus::NoMatchingState { item };
+                    return;
+                }
+            }
+
+            *status.lock().unwrap() = SimStatus::Done { state_transitions };
+        }),
+    }
 }

@@ -23,6 +23,7 @@ pub enum Page {
     },
     StrategyBuilder {
         strategy: Strategy,
+        simulation_state: Option<pages::strategy_sim::SimState>,
     },
 }
 
@@ -40,6 +41,7 @@ impl Page {
             },
             StrategyBuilder {
                 strategy: Strategy(vec![]),
+                simulation_state: None,
             },
         ]
     }
