@@ -349,10 +349,13 @@ impl MyEguiApp {
                         };
 
                         // Select Currency
-                        let old_selected =
-                            dropdown(ui, currency, &currencies, "currency_select", |c| {
-                                c.name().to_string()
-                            });
+                        let old_selected = dropdown(
+                            ui,
+                            currency,
+                            &currencies,
+                            &format!("currency_select_{i}"),
+                            |c| c.name().to_string(),
+                        );
                         if old_selected.is_some() {
                             // Currency changed, clear omens
                             selected_omens.clear();
@@ -384,7 +387,43 @@ impl MyEguiApp {
                 ));
             }
 
-            // Action
+            // Strategy simulation
+            if ui.button("Go!").clicked() {
+                let mut item = self.base_item.clone();
+
+                let mut state_transitions = vec![vec![0_usize; strategy.0.len()]; strategy.0.len()];
+                let mut finished_state = false;
+                let mut prev_state = None;
+                while let Some(index) = strategy.get(&item) {
+                    // Keep track of state transitions
+                    if let Some(prev) = prev_state {
+                        let row: &mut Vec<_> = &mut state_transitions[prev];
+                        row[index] += 1;
+                    }
+                    prev_state = Some(index);
+
+                    let Some((omens, currency)) = &strategy.0[index].1 else {
+                        // End step, break out
+                        finished_state = true;
+                        break;
+                    };
+
+                    assert!(
+                        currency.can_be_used(&item, &candidate_tiers, omens),
+                        "Currency cannot be used in current state!"
+                    );
+
+                    currency.craft(&mut item, &candidate_tiers, omens);
+                }
+
+                if !finished_state {
+                    // Process exited because there was no matching condition
+                    ui.label("No matching condition!");
+                    println!("{}", item);
+                }
+
+                println!("{:#?}", state_transitions);
+            }
         });
     }
 }

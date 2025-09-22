@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, fmt::Display};
 
 use crate::{
     FORMATTERS, ITEM_TIERS, MODS_HV, TIERS_HV,
@@ -86,54 +86,7 @@ impl ItemState {
     }
 
     pub fn print_item(&self) {
-        let tiers = TIERS_HV.get().unwrap();
-        let mods = MODS_HV.get().unwrap();
-        let stat_formatters = FORMATTERS.get().unwrap();
-
-        println!("{}", self.base_type);
-        println!("ilvl: {}", self.item_level);
-        println!("{:?}", self.rarity);
-        println!("=====================");
-        for tier_id in &self.mods {
-            let tier = &tiers[*tier_id];
-            let modifier = &mods[tier.mod_id];
-
-            let formatters_key = modifier.stats.join("|");
-            if let Some(formatters) = stat_formatters.get(&formatters_key) {
-                let formatter = get_matching_formatter(
-                    formatters,
-                    &tier
-                        .value_ranges
-                        .iter()
-                        .map(|[min, _]| *min)
-                        .collect::<Vec<_>>(),
-                );
-                // Match on multi-stat formatter
-                let string = formatter.format_value_range(&tier.value_ranges);
-                println!("{}", string);
-            } else {
-                // Per-stat formatters
-                for (stat_id, value_range) in modifier.stats.iter().zip(tier.value_ranges.chunks(1))
-                {
-                    let Some(formatters) = stat_formatters.get(stat_id) else {
-                        println!("No formatter for stat: {:?}", stat_id);
-                        continue;
-                    };
-                    let formatter = get_matching_formatter(
-                        formatters,
-                        &tier
-                            .value_ranges
-                            .iter()
-                            .map(|[min, _]| *min)
-                            .collect::<Vec<_>>(),
-                    );
-                    // TODO: select formatter based on tier
-                    let string = formatter.format_value_range(value_range);
-
-                    println!("{}", string);
-                }
-            }
-        }
+        println!("{self}");
     }
 
     /// Checks whether the current state of the item is valid
@@ -173,6 +126,60 @@ impl ItemState {
             == self.mods.len();
 
         num_mods_ok && num_affixes_ok && mod_ilvls_ok && mod_families_ok
+    }
+}
+
+impl Display for ItemState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let tiers = TIERS_HV.get().unwrap();
+        let mods = MODS_HV.get().unwrap();
+        let stat_formatters = FORMATTERS.get().unwrap();
+
+        writeln!(f, "{}", self.base_type)?;
+        writeln!(f, "ilvl: {}", self.item_level)?;
+        writeln!(f, "{:?}", self.rarity)?;
+        writeln!(f, "=====================")?;
+        for tier_id in &self.mods {
+            let tier = &tiers[*tier_id];
+            let modifier = &mods[tier.mod_id];
+
+            let formatters_key = modifier.stats.join("|");
+            if let Some(formatters) = stat_formatters.get(&formatters_key) {
+                let formatter = get_matching_formatter(
+                    formatters,
+                    &tier
+                        .value_ranges
+                        .iter()
+                        .map(|[min, _]| *min)
+                        .collect::<Vec<_>>(),
+                );
+                // Match on multi-stat formatter
+                let string = formatter.format_value_range(&tier.value_ranges);
+                writeln!(f, "{}", string)?;
+            } else {
+                // Per-stat formatters
+                for (stat_id, value_range) in modifier.stats.iter().zip(tier.value_ranges.chunks(1))
+                {
+                    let Some(formatters) = stat_formatters.get(stat_id) else {
+                        panic!("No formatter for stat: {:?}", stat_id);
+                    };
+                    let formatter = get_matching_formatter(
+                        formatters,
+                        &tier
+                            .value_ranges
+                            .iter()
+                            .map(|[min, _]| *min)
+                            .collect::<Vec<_>>(),
+                    );
+                    // TODO: select formatter based on tier
+                    let string = formatter.format_value_range(value_range);
+
+                    writeln!(f, "{}", string)?;
+                }
+            }
+        }
+
+        Ok(())
     }
 }
 

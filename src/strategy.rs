@@ -98,15 +98,21 @@ pub struct Strategy(pub Vec<(Condition, Option<(HashSet<Omen>, CurrencyType)>)>)
 impl Strategy {
     /// Select a crafting method given the item's current state
     pub fn get_craft(&self, item: &ItemState) -> Option<&(HashSet<Omen>, CurrencyType)> {
-        let matching_states = self
-            .0
-            .iter()
-            .filter(|(cond, _)| cond.check(item))
-            .collect::<Vec<_>>();
-
-        assert!(!matching_states.is_empty(), "No matching states!");
+        let index = self
+            .get(item)
+            .unwrap_or_else(|| panic!("No matching states!"));
 
         // Always return the first match
-        matching_states[0].1.as_ref()
+        self.0[index].1.as_ref()
+    }
+
+    // Gets the index of the first matching step, if any
+    pub fn get(&self, item: &ItemState) -> Option<usize> {
+        self.0
+            .iter()
+            .enumerate()
+            .filter(|(_, (cond, _))| cond.check(item))
+            .map(|(i, _)| i)
+            .next()
     }
 }
