@@ -19,7 +19,7 @@ use poe_crafting::{
     item_state::{ItemState, Rarity, get_valid_mods_for_item},
     strategy::{Condition, ConditionGroup, ModifierCondition, Strategy},
     types::{Affix, Modifier, Omen, Tier},
-    ui::{dropdown, multi_select_checkboxes, range_selector, rarity_dropdown},
+    ui::{dropdown, multi_select_checkboxes, omen_selection, range_selector, rarity_dropdown},
 };
 
 #[derive(Debug)]
@@ -249,39 +249,7 @@ impl MyEguiApp {
             }
 
             // Select Omens
-            let mut omens = selected_currency
-                .possible_omens()
-                .into_iter()
-                // Only omens that can be used
-                .filter(|&omen| {
-                    selected_currency.can_be_used(
-                        &self.base_item,
-                        &candidate_tiers,
-                        &HashSet::from_iter(std::iter::once(omen)),
-                    )
-                })
-                .collect::<Vec<_>>();
-            omens.sort();
-
-            ui.horizontal(|ui| {
-                for omen in omens {
-                    // Individual omen buttons
-                    let mut selected = selected_omens.contains(&omen);
-                    let old_selected = selected;
-                    ui.checkbox(&mut selected, format!("{:?}", omen));
-                    match (old_selected, selected) {
-                        (true, false) => {
-                            // Un-selected
-                            selected_omens.remove(&omen);
-                        }
-                        (false, true) => {
-                            // Selected
-                            selected_omens.insert(omen);
-                        }
-                        _ => (),
-                    }
-                }
-            });
+            omen_selection(ui, selected_currency, selected_omens, Some(&self.base_item));
 
             // 10^N iterations
             ui.add(
@@ -391,28 +359,7 @@ impl MyEguiApp {
                         }
 
                         // Select Omens
-                        let mut omens = currency.possible_omens().into_iter().collect::<Vec<_>>();
-                        omens.sort();
-
-                        ui.horizontal(|ui| {
-                            for omen in omens {
-                                // Individual omen buttons
-                                let mut selected = selected_omens.contains(&omen);
-                                let old_selected = selected;
-                                ui.checkbox(&mut selected, format!("{:?}", omen));
-                                match (old_selected, selected) {
-                                    (true, false) => {
-                                        // Un-selected
-                                        selected_omens.remove(&omen);
-                                    }
-                                    (false, true) => {
-                                        // Selected
-                                        selected_omens.insert(omen);
-                                    }
-                                    _ => (),
-                                }
-                            }
-                        });
+                        omen_selection(ui, currency, selected_omens, None);
                     } else {
                         // No action - end state
                         *action = None;

@@ -1,8 +1,12 @@
-use std::{mem::replace, ops::RangeInclusive};
+use std::{collections::HashSet, mem::replace, ops::RangeInclusive};
 
 use egui::{ComboBox, DragValue, Ui};
 
-use crate::item_state::Rarity;
+use crate::{
+    currency::{Currency, CurrencyType},
+    item_state::{ItemState, Rarity, get_valid_mods_for_item},
+    types::Omen,
+};
 
 /// Dropdown menu for Rarity. Returns the previous value if it has changed on this frame.
 pub fn rarity_dropdown(ui: &mut Ui, value: &mut Rarity, key: &str) -> Option<Rarity> {
@@ -90,4 +94,33 @@ pub fn multi_select_checkboxes<T: Clone + PartialEq>(
             }
         }
     });
+}
+
+// Multi-checkbox for selecting omens for a currency
+pub fn omen_selection(
+    ui: &mut Ui,
+    currency: &CurrencyType,
+    omens: &mut HashSet<Omen>,
+    item_filter: Option<&ItemState>,
+) {
+    let possible_omens = currency.possible_omens();
+    let mut possible_omens = possible_omens.iter().collect::<Vec<_>>();
+    if let Some(item) = item_filter {
+        let candidate_tiers = get_valid_mods_for_item(item);
+        possible_omens.retain(|&&o| {
+            currency.can_be_used(
+                item,
+                &candidate_tiers,
+                &HashSet::from_iter(std::iter::once(o)),
+            )
+        });
+    }
+    possible_omens.sort();
+
+    let mut selected_omens = omens.iter().copied().collect::<Vec<_>>();
+    multi_select_checkboxes(ui, &mut selected_omens, &possible_omens, |omen| {
+        format!("{omen:?}")
+    });
+
+    *omens = HashSet::from_iter(selected_omens)
 }
