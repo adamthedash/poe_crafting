@@ -1,4 +1,11 @@
-use std::{collections::HashSet, ops::RangeInclusive};
+use std::{
+    collections::HashSet,
+    fs::{self, File},
+    ops::RangeInclusive,
+    path::Path,
+};
+
+use serde::{Deserialize, Serialize};
 
 use crate::{
     TIERS_HV,
@@ -9,7 +16,7 @@ use crate::{
 };
 
 /// Eg. LocalAttackSpeed T2-T1
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ModifierCondition {
     pub mod_group: OpaqueIndex<Modifier>,
     pub levels: Vec<u32>,
@@ -21,7 +28,7 @@ impl ModifierCondition {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum ConditionGroup {
     Count {
         count: RangeInclusive<usize>,
@@ -81,7 +88,7 @@ impl ConditionGroup {
 }
 
 /// Represents the state of an item.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Condition {
     pub rarity: Rarity,
     /// All of these groups must be true
@@ -94,7 +101,7 @@ impl Condition {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Strategy(pub Vec<(Condition, Option<(HashSet<Omen>, CurrencyType)>)>);
 
 impl Strategy {
@@ -108,7 +115,7 @@ impl Strategy {
         self.0[index].1.as_ref()
     }
 
-    // Gets the index of the first matching step, if any
+    /// Gets the index of the first matching step, if any
     pub fn get(&self, item: &ItemState) -> Option<usize> {
         self.0
             .iter()
@@ -116,5 +123,21 @@ impl Strategy {
             .filter(|(_, (cond, _))| cond.check(item))
             .map(|(i, _)| i)
             .next()
+    }
+
+    /// Serialise the strategy to a file
+    pub fn save(&self, path: &Path) {
+        let mut file = fs::OpenOptions::new()
+            .write(true)
+            .truncate(true)
+            .create(true)
+            .open(path)
+            .unwrap();
+        serde_json::to_writer(&mut file, self).unwrap();
+    }
+
+    pub fn load(path: &Path) -> Self {
+        let file = File::open(path).unwrap();
+        serde_json::from_reader(file).unwrap()
     }
 }

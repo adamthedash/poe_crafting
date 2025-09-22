@@ -4,7 +4,7 @@
 use std::collections::{HashMap, HashSet};
 
 use regex::Regex;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::hashvec::OpaqueIndex;
 
@@ -217,7 +217,7 @@ impl Condition {
 /// LUT key is "|" delimited StatID's
 pub type StatFormatters = HashMap<String, Vec<StatFormatter>>;
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Omen {
     Sinistral,
     Dextral,

@@ -14,6 +14,7 @@ use crate::{
 pub mod crafting;
 pub mod currency;
 pub mod hashvec;
+pub mod io;
 pub mod item_state;
 pub mod parser_coe;
 pub mod parser_dat;

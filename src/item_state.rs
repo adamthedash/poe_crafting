@@ -1,19 +1,21 @@
 use std::{collections::HashSet, fmt::Display};
 
+use serde::{Deserialize, Serialize};
+
 use crate::{
     FORMATTERS, ITEM_TIERS, MODS_HV, TIERS_HV,
     hashvec::OpaqueIndex,
     types::{Affix, BaseItemId, ModFamily, ModTag, Tier, get_matching_formatter},
 };
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
 pub enum Rarity {
     Normal,
     Magic,
     Rare,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ItemState {
     pub base_type: BaseItemId,
     pub item_level: u32,

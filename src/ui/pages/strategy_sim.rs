@@ -1,6 +1,7 @@
 use crate::{strategy::Strategy, types::Omen, ui::Page};
 use std::{
     collections::HashSet,
+    path::Path,
     sync::{Arc, Mutex},
     thread::{self, JoinHandle},
 };
@@ -325,6 +326,15 @@ pub fn show_page(page_state: &mut Page, ctx: &egui::Context, item: &ItemState) {
         .collect::<Vec<_>>();
 
     CentralPanel::default().show(ctx, |ui| {
+        if ui.button("Save").clicked() {
+            // Serialise strategy to JSON
+            strategy.save(Path::new("strat.json"));
+        }
+        if ui.button("Load").clicked() {
+            // Load strategy, verify that it's valid?
+            *strategy = Strategy::load(Path::new("strat.json"));
+        }
+
         let to_remove = strategy
             .0
             .iter_mut()
