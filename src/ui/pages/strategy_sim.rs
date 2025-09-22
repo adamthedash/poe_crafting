@@ -15,7 +15,7 @@ use crate::{
     types::{Modifier, Tier},
     ui::{dropdown, multi_select_checkboxes, omen_selection, range_selector, rarity_dropdown},
 };
-use egui::{self, CentralPanel, Color32, Frame, Grid, Ui};
+use egui::{self, CentralPanel, Color32, Frame, Grid, ScrollArea, Ui};
 use itertools::Itertools;
 
 #[derive(Debug)]
@@ -50,12 +50,24 @@ fn show_strategy_step(
     key: &str,
     condition: &mut Condition,
     candidate_mods: &[(OpaqueIndex<Modifier>, Vec<OpaqueIndex<Tier>>)],
-) -> bool {
+) -> Option<OrderRequest> {
     Frame::default()
         .fill(Color32::DARK_RED)
         .show(ui, |ui| {
-            // Button to remove this step
-            let remove = ui.button("X").clicked();
+            let order_action = ui
+                .horizontal(|ui| {
+                    // Button to remove this step
+                    [
+                        ui.button("X").clicked().then_some(OrderRequest::Remove),
+                        ui.button("^").clicked().then_some(OrderRequest::MoveUp),
+                        ui.button("v").clicked().then_some(OrderRequest::MoveDown),
+                        ui.button("Copy").clicked().then_some(OrderRequest::Copy),
+                    ]
+                    .into_iter()
+                    .flatten()
+                    .next()
+                })
+                .inner;
 
             rarity_dropdown(ui, &mut condition.rarity, &format!("rarity_{key}"));
 
@@ -82,7 +94,7 @@ fn show_strategy_step(
                 });
             }
 
-            remove
+            order_action
         })
         .inner
 }
@@ -281,16 +293,27 @@ fn show_strategy_mod(
     .inner
 }
 
-pub fn show_page(page_state: &mut Page, ctx: &egui::Context, item: &mut ItemState) {
-    let tiers = TIERS_HV.get().unwrap();
+enum OrderRequest {
+    Remove,
+    MoveUp,
+    MoveDown,
+    Copy,
+}
 
-    let Page::StrategyBuilder {
-        strategy,
-        simulation_state,
-    } = page_state
-    else {
-        unreachable!()
-    };
+enum OrderAction {
+    Remove(usize),
+    MoveUp(usize),
+    MoveDown(usize),
+    Copy(usize),
+}
+
+fn get_tiers_mods(
+    item: &ItemState,
+) -> (
+    Vec<OpaqueIndex<Tier>>,
+    Vec<(OpaqueIndex<Modifier>, Vec<OpaqueIndex<Tier>>)>,
+) {
+    let tiers = TIERS_HV.get().unwrap();
 
     let candidate_tiers = get_valid_mods_for_item(item);
     let candidate_mods = candidate_tiers
@@ -310,6 +333,20 @@ pub fn show_page(page_state: &mut Page, ctx: &egui::Context, item: &mut ItemStat
         .map(|(mod_id, group)| (mod_id, group.copied().collect::<Vec<_>>()))
         .collect::<Vec<_>>();
 
+    (candidate_tiers, candidate_mods)
+}
+
+pub fn show_page(page_state: &mut Page, ctx: &egui::Context, item: &mut ItemState) {
+    let Page::StrategyBuilder {
+        strategy,
+        simulation_state,
+    } = page_state
+    else {
+        unreachable!()
+    };
+
+    let (mut candidate_tiers, mut candidate_mods) = get_tiers_mods(item);
+
     let currencies = CURRENCIES
         .iter()
         .chain(ESSENCES.get().unwrap().iter().sorted_unstable_by_key(|e| {
@@ -326,130 +363,155 @@ pub fn show_page(page_state: &mut Page, ctx: &egui::Context, item: &mut ItemStat
         .collect::<Vec<_>>();
 
     CentralPanel::default().show(ctx, |ui| {
-        if ui.button("Save").clicked() {
-            // Serialise strategy to JSON
-            SavedStrategy {
-                base_item: item.clone(),
-                strategy: strategy.clone(),
+        ScrollArea::vertical().show(ui, |ui| {
+            if ui.button("Save").clicked() {
+                // Serialise strategy to JSON
+                SavedStrategy {
+                    base_item: item.clone(),
+                    strategy: strategy.clone(),
+                }
+                .save(Path::new("strat.json"));
             }
-            .save(Path::new("strat.json"));
-        }
-        if ui.button("Load").clicked() {
-            // Load strategy, TODO: verify that it's valid?
-            let saved_strategy = SavedStrategy::load(Path::new("strat.json"));
-            *strategy = saved_strategy.strategy;
-            *item = saved_strategy.base_item;
-        }
+            if ui.button("Load").clicked() {
+                // Load strategy, TODO: verify that it's valid?
+                let saved_strategy = SavedStrategy::load(Path::new("strat.json"));
+                *strategy = saved_strategy.strategy;
+                *item = saved_strategy.base_item;
+                (candidate_tiers, candidate_mods) = get_tiers_mods(item);
+            }
 
-        let to_remove = strategy
-            .0
-            .iter_mut()
-            .enumerate()
-            .flat_map(|(i, (condition, action))| {
-                // Condition
-                let remove = show_strategy_step(ui, &format!("{i}"), condition, &candidate_mods)
-                    .then_some(i);
+            let order_action = strategy
+                .0
+                .iter_mut()
+                .enumerate()
+                .flat_map(|(i, (condition, action))| {
+                    // Condition
+                    let order_action =
+                        show_strategy_step(ui, &format!("{i}"), condition, &candidate_mods).map(
+                            |request| match request {
+                                OrderRequest::Remove => OrderAction::Remove(i),
+                                OrderRequest::MoveUp => OrderAction::MoveUp(i),
+                                OrderRequest::MoveDown => OrderAction::MoveDown(i),
+                                OrderRequest::Copy => OrderAction::Copy(i),
+                            },
+                        );
 
-                // Action
-                let mut do_action = action.is_some();
-                ui.checkbox(&mut do_action, "Craft");
-                if do_action {
-                    if action.is_none() {
-                        // Default selection
-                        *action = Some((HashSet::new(), CurrencyType::Transmute));
+                    // Action
+                    let mut do_action = action.is_some();
+                    ui.checkbox(&mut do_action, "Craft");
+                    if do_action {
+                        if action.is_none() {
+                            // Default selection
+                            *action = Some((HashSet::new(), CurrencyType::Transmute));
+                        }
+                        // Show currency dropdown
+                        let Some((selected_omens, currency)) = action else {
+                            unreachable!()
+                        };
+
+                        // Select Currency
+                        let old_selected = dropdown(
+                            ui,
+                            currency,
+                            &currencies,
+                            &format!("currency_select_{i}"),
+                            |c| c.name().to_string(),
+                        );
+                        if old_selected.is_some() {
+                            // Currency changed, clear omens
+                            selected_omens.clear();
+                        }
+
+                        // Select Omens
+                        omen_selection(ui, currency, selected_omens, None);
+                    } else {
+                        // No action - end state
+                        *action = None;
                     }
-                    // Show currency dropdown
-                    let Some((selected_omens, currency)) = action else {
-                        unreachable!()
-                    };
 
-                    // Select Currency
-                    let old_selected = dropdown(
-                        ui,
+                    order_action
+                })
+                .next();
+
+            if let Some(action) = order_action {
+                match action {
+                    OrderAction::Remove(i) => {
+                        strategy.0.remove(i);
+                    }
+                    OrderAction::MoveUp(i) => {
+                        if i > 0 {
+                            strategy.0.swap(i - 1, i);
+                        }
+                    }
+                    OrderAction::MoveDown(i) => {
+                        if i + 1 < strategy.0.len() {
+                            strategy.0.swap(i, i + 1);
+                        }
+                    }
+                    OrderAction::Copy(i) => strategy.0.insert(i + 1, strategy.0[i].clone()),
+                };
+            }
+
+            // Button to add a new condition
+            if ui.button("Add new condition").clicked() {
+                strategy.0.push((
+                    Condition {
+                        rarity: Rarity::Normal,
+                        groups: vec![],
+                    },
+                    None,
+                ));
+            }
+
+            // Strategy simulation
+            if ui.button("Go!").clicked() {
+                *simulation_state = Some(run_sim(
+                    item.clone(),
+                    strategy.clone(),
+                    100,
+                    &candidate_tiers,
+                ));
+            }
+
+            if let Some(sim_state) = simulation_state {
+                match &*sim_state.status.lock().unwrap() {
+                    SimStatus::InvalidCraft {
+                        item,
                         currency,
-                        &currencies,
-                        &format!("currency_select_{i}"),
-                        |c| c.name().to_string(),
-                    );
-                    if old_selected.is_some() {
-                        // Currency changed, clear omens
-                        selected_omens.clear();
+                        omens,
+                    } => {
+                        ui.label("Invalid craft:");
+                        ui.label(format!("{}", item));
+                        ui.label(format!("{} {:?}", currency.name(), omens));
                     }
-
-                    // Select Omens
-                    omen_selection(ui, currency, selected_omens, None);
-                } else {
-                    // No action - end state
-                    *action = None;
-                }
-
-                remove
-            })
-            .next();
-
-        if let Some(index) = to_remove {
-            strategy.0.remove(index);
-        }
-
-        // Button to add a new condition
-        if ui.button("Add new condition").clicked() {
-            strategy.0.push((
-                Condition {
-                    rarity: Rarity::Normal,
-                    groups: vec![],
-                },
-                None,
-            ));
-        }
-
-        // Strategy simulation
-        if ui.button("Go!").clicked() {
-            *simulation_state = Some(run_sim(
-                item.clone(),
-                strategy.clone(),
-                100,
-                &candidate_tiers,
-            ));
-        }
-
-        if let Some(sim_state) = simulation_state {
-            match &*sim_state.status.lock().unwrap() {
-                SimStatus::InvalidCraft {
-                    item,
-                    currency,
-                    omens,
-                } => {
-                    ui.label("Invalid craft:");
-                    ui.label(format!("{}", item));
-                    ui.label(format!("{} {:?}", currency.name(), omens));
-                }
-                SimStatus::NoMatchingState { item } => {
-                    ui.label("No matching condition for item:");
-                    ui.label(format!("{}", item));
-                }
-                SimStatus::Running {
-                    current_iters,
-                    total_iters,
-                } => {
-                    ui.horizontal(|ui| {
-                        ui.spinner();
-                        ui.label(format!("{} / {}", current_iters, total_iters));
-                    });
-                }
-                SimStatus::Done { state_transitions } => {
-                    Grid::new("state_transitions_grid")
-                        .num_columns(state_transitions.len())
-                        .show(ui, |ui| {
-                            for row in state_transitions {
-                                for cell in row {
-                                    ui.label(format!("{cell}"));
-                                }
-                                ui.end_row();
-                            }
+                    SimStatus::NoMatchingState { item } => {
+                        ui.label("No matching condition for item:");
+                        ui.label(format!("{}", item));
+                    }
+                    SimStatus::Running {
+                        current_iters,
+                        total_iters,
+                    } => {
+                        ui.horizontal(|ui| {
+                            ui.spinner();
+                            ui.label(format!("{} / {}", current_iters, total_iters));
                         });
+                    }
+                    SimStatus::Done { state_transitions } => {
+                        Grid::new("state_transitions_grid")
+                            .num_columns(state_transitions.len())
+                            .show(ui, |ui| {
+                                for row in state_transitions {
+                                    for cell in row {
+                                        ui.label(format!("{cell}"));
+                                    }
+                                    ui.end_row();
+                                }
+                            });
+                    }
                 }
             }
-        }
+        });
     });
 }
 
