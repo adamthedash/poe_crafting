@@ -695,7 +695,7 @@ impl Currency for PerfectChaos {
 }
 
 /// Lesser to Greater Essences
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Essence {
     pub name: String,
     pub tiers: HashMap<BaseItemId, Vec<OpaqueIndex<Tier>>>,
@@ -761,7 +761,7 @@ impl Currency for Essence {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct PerfectEssence {
     pub name: String,
     pub tiers: HashMap<BaseItemId, Vec<OpaqueIndex<Tier>>>,
@@ -901,7 +901,7 @@ impl Currency for PerfectEssence {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum CurrencyType {
     Transmute,
     GreaterTransmute,
@@ -924,32 +924,6 @@ pub enum CurrencyType {
     PerfectEssence(PerfectEssence),
 }
 
-impl PartialEq for CurrencyType {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::Transmute, Self::Transmute) => true,
-            (Self::GreaterTransmute, Self::GreaterTransmute) => true,
-            (Self::PerfectTransmute, Self::PerfectTransmute) => true,
-            (Self::Augmentation, Self::Augmentation) => true,
-            (Self::GreaterAugmentation, Self::GreaterAugmentation) => true,
-            (Self::PerfectAugmentation, Self::PerfectAugmentation) => true,
-            (Self::Regal, Self::Regal) => true,
-            (Self::GreaterRegal, Self::GreaterRegal) => true,
-            (Self::PerfectRegal, Self::PerfectRegal) => true,
-            (Self::Exalt, Self::Exalt) => true,
-            (Self::GreaterExalt, Self::GreaterExalt) => true,
-            (Self::PerfectExalt, Self::PerfectExalt) => true,
-            (Self::Annulment, Self::Annulment) => true,
-            (Self::Alchemy, Self::Alchemy) => true,
-            (Self::Chaos, Self::Chaos) => true,
-            (Self::GreaterChaos, Self::GreaterChaos) => true,
-            (Self::PerfectChaos, Self::PerfectChaos) => true,
-            (Self::Essence(a), Self::Essence(b)) => a.name == b.name,
-            (Self::PerfectEssence(a), Self::PerfectEssence(b)) => a.name == b.name,
-            _ => false,
-        }
-    }
-}
 
 impl Currency for CurrencyType {
     fn name(&self) -> &str {
