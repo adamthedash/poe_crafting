@@ -1,7 +1,7 @@
 use std::{collections::HashSet, path::Path};
 
 use poe_crafting::{
-    MODS_HV, TIERS_HV,
+    MODS_HV,
     currency::{Currency, CurrencyType},
     init,
     item_state::{ItemState, Rarity, get_valid_mods_for_item},
@@ -13,7 +13,6 @@ fn main() {
     let data_root = Path::new("/mnt/nvme_4tb/programming/data/poe2"); // desktop
     init(data_root);
 
-    let tiers = TIERS_HV.get().unwrap();
     let mods = MODS_HV.get().unwrap();
 
     let item = ItemState {

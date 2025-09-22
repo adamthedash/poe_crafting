@@ -1,7 +1,7 @@
 use std::{collections::HashSet, path::Path};
 
 use poe_crafting::{
-    ESSENCES, ITEM_TIERS, TIERS_HV,
+    ESSENCES, ITEM_TIERS,
     currency::{CURRENCIES, Currency},
     init,
     item_state::{ItemState, Rarity, get_valid_mods_for_item},
@@ -43,11 +43,11 @@ fn main() {
                 .possible_omens()
                 .into_iter()
                 // Only omens that can be used
-                .filter(|omen| {
+                .filter(|&omen| {
                     currency.can_be_used(
                         &item,
                         &candidate_tiers,
-                        &HashSet::from_iter(std::iter::once(omen.clone())),
+                        &HashSet::from_iter(std::iter::once(omen)),
                     )
                 })
                 .collect::<Vec<_>>();
@@ -56,7 +56,7 @@ fn main() {
                 random_choice()
                     .random_choice_f32(&omens, &weights, 1)
                     .into_iter()
-                    .map(|o| (*o).clone()),
+                    .copied(),
             );
 
             // println!("{:?} {:?}", omens, currency);

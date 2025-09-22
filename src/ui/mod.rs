@@ -1,3 +1,5 @@
+pub mod pages;
+
 use std::{collections::HashSet, mem::replace, ops::RangeInclusive};
 
 use egui::{ComboBox, DragValue, Ui};
@@ -5,8 +7,51 @@ use egui::{ComboBox, DragValue, Ui};
 use crate::{
     currency::{Currency, CurrencyType},
     item_state::{ItemState, Rarity, get_valid_mods_for_item},
+    strategy::Strategy,
     types::Omen,
 };
+
+/// Persisted state for the pages
+#[derive(Debug)]
+pub enum Page {
+    ItemBuilder,
+    CraftProbability {
+        selected_currency: CurrencyType,
+        selected_omens: HashSet<Omen>,
+        simulation_state: Option<pages::currency_sim::SimState>,
+        num_iters_exp: u32,
+    },
+    StrategyBuilder {
+        strategy: Strategy,
+    },
+}
+
+impl Page {
+    pub fn all() -> Vec<Self> {
+        use Page::*;
+
+        vec![
+            ItemBuilder,
+            CraftProbability {
+                selected_currency: CurrencyType::Transmute,
+                selected_omens: HashSet::new(),
+                simulation_state: None,
+                num_iters_exp: 5,
+            },
+            StrategyBuilder {
+                strategy: Strategy(vec![]),
+            },
+        ]
+    }
+
+    pub fn name(&self) -> &str {
+        match self {
+            Page::ItemBuilder => "Item Builder",
+            Page::CraftProbability { .. } => "Craft Probabilities",
+            Page::StrategyBuilder { .. } => "Strategy Builder",
+        }
+    }
+}
 
 /// Dropdown menu for Rarity. Returns the previous value if it has changed on this frame.
 pub fn rarity_dropdown(ui: &mut Ui, value: &mut Rarity, key: &str) -> Option<Rarity> {
