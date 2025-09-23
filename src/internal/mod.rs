@@ -4,8 +4,10 @@ use std::{
     sync::{LazyLock, OnceLock},
 };
 
+use itertools::Itertools;
+
 use crate::{
-    currency::CurrencyType,
+    currency::{Currency, CurrencyType},
     hashvec::HashVec,
     parsers::{
         dat::{Dats, load_essences, load_mod_tiers},
@@ -13,10 +15,6 @@ use crate::{
     },
     types::{BaseItemId, ModGroup, Modifier, StatFormatter, StatFormatters, Tier, TierId},
 };
-
-pub static FORMATTERS: OnceLock<HashMap<String, Vec<StatFormatter>>> = OnceLock::new();
-pub static ITEM_TIERS: OnceLock<HashMap<BaseItemId, Vec<TierId>>> = OnceLock::new();
-pub static ESSENCES: OnceLock<Vec<CurrencyType>> = OnceLock::new();
 
 /// 2-stage initialisation of global data
 /// 1) init() loads and sets the data in the OnceLock as it needs the data path passed to it
@@ -29,6 +27,41 @@ pub static TIERS: LazyLock<&HashVec<TierId, Tier>> =
 static MODS_INTERNAL: OnceLock<HashVec<ModGroup, Modifier>> = OnceLock::new();
 pub static MODS: LazyLock<&HashVec<ModGroup, Modifier>> =
     LazyLock::new(|| MODS_INTERNAL.get().expect("init() has not been called."));
+
+static ESSENCES_INTERNAL: OnceLock<Vec<CurrencyType>> = OnceLock::new();
+pub static CURRENCIES: LazyLock<Vec<&CurrencyType>> = LazyLock::new(|| {
+    ESSENCES_INTERNAL
+        .get()
+        .expect("init() has not been called.")
+        .iter()
+        .sorted_unstable_by_key(|e| {
+            let name = e.name();
+            let sort = match name.split(" ").next().unwrap() {
+                "Lesser" => 0,
+                "Essence" => 1,
+                "Greater" => 2,
+                "Perfect" => 3,
+                _ => 4,
+            };
+            (sort, name)
+        })
+        .chain(CurrencyType::all().iter())
+        .collect()
+});
+
+static ITEM_TIERS_INTERNAL: OnceLock<HashMap<BaseItemId, Vec<TierId>>> = OnceLock::new();
+pub static ITEM_TIERS: LazyLock<&HashMap<BaseItemId, Vec<TierId>>> = LazyLock::new(|| {
+    ITEM_TIERS_INTERNAL
+        .get()
+        .expect("init() has not been called.")
+});
+
+static FORMATTERS_INTERNAL: OnceLock<HashMap<String, Vec<StatFormatter>>> = OnceLock::new();
+pub static FORMATTERS: LazyLock<&HashMap<String, Vec<StatFormatter>>> = LazyLock::new(|| {
+    FORMATTERS_INTERNAL
+        .get()
+        .expect("init() has not been called.")
+});
 
 /// Load all of the data
 /// PATHS
@@ -65,7 +98,7 @@ pub fn init(data_root: &Path) {
                 .collect::<Vec<_>>(),
         );
     }
-    ITEM_TIERS.set(base_tiers).unwrap();
+    ITEM_TIERS_INTERNAL.set(base_tiers).unwrap();
 
     // Load mod groups from dat files
     let dat_tables = Dats::load_tables(&data_root.join("tables"));
@@ -80,7 +113,7 @@ pub fn init(data_root: &Path) {
         tier.weight = *tier_weights.get(&tier.id).unwrap_or(&0);
     });
     TIERS_INTERNAL.set(tiers).unwrap();
-    ESSENCES.set(load_essences(&dat_tables)).unwrap();
+    ESSENCES_INTERNAL.set(load_essences(&dat_tables)).unwrap();
 
     // Load stat descriptions
     let stat_desc_root = stat_desc::load(&data_root.join("stat_descriptions.json"));
@@ -97,5 +130,5 @@ pub fn init(data_root: &Path) {
             stat_formatters.insert(key.clone(), m.English.clone());
         }
     }
-    FORMATTERS.set(stat_formatters).unwrap();
+    FORMATTERS_INTERNAL.set(stat_formatters).unwrap();
 }

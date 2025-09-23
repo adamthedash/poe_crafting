@@ -9,4 +9,4 @@ pub mod strategy;
 pub mod types;
 pub mod ui;
 
-pub use internal::{ESSENCES, FORMATTERS, ITEM_TIERS, MODS, TIERS, init};
+pub use internal::{CURRENCIES, FORMATTERS, ITEM_TIERS, MODS, TIERS, init};

@@ -8,8 +8,8 @@ use egui::{self, DragValue, Grid, ScrollArea, Ui};
 use itertools::Itertools;
 
 use crate::{
-    ESSENCES, MODS, TIERS,
-    currency::{CURRENCIES, Currency, CurrencyType},
+    CURRENCIES, MODS, TIERS,
+    currency::{Currency, CurrencyType},
     hashvec::OpaqueIndex,
     item_state::{ItemState, get_valid_mods_for_item},
     types::{Omen, Tier},
@@ -140,18 +140,8 @@ pub fn show_page(page_state: &mut Page, ctx: &egui::Context, item: &ItemState) {
 
     let currencies = CURRENCIES
         .iter()
-        .chain(ESSENCES.get().unwrap().iter().sorted_unstable_by_key(|e| {
-            let name = e.name();
-            let sort = match name.split(" ").next().unwrap() {
-                "Lesser" => 0,
-                "Essence" => 1,
-                "Greater" => 2,
-                "Perfect" => 3,
-                _ => 4,
-            };
-            (sort, name)
-        }))
         .filter(|c| c.can_be_used(item, &candidate_tiers, &HashSet::new()))
+        .copied()
         .collect::<Vec<_>>();
 
     egui::CentralPanel::default().show(ctx, |ui| {

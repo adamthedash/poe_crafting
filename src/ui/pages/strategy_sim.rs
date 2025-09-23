@@ -9,8 +9,8 @@ use egui::{self, CentralPanel, Color32, Frame, Grid, ScrollArea, Ui};
 use itertools::Itertools;
 
 use crate::{
-    ESSENCES, MODS, TIERS,
-    currency::{CURRENCIES, Currency, CurrencyType},
+    CURRENCIES, MODS, TIERS,
+    currency::{Currency, CurrencyType},
     hashvec::OpaqueIndex,
     io::SavedStrategy,
     item_state::{ItemState, Rarity, get_valid_mods_for_item},
@@ -339,21 +339,6 @@ pub fn show_page(page_state: &mut Page, ctx: &egui::Context, item: &mut ItemStat
 
     let (mut candidate_tiers, mut candidate_mods) = get_tiers_mods(item);
 
-    let currencies = CURRENCIES
-        .iter()
-        .chain(ESSENCES.get().unwrap().iter().sorted_unstable_by_key(|e| {
-            let name = e.name();
-            let sort = match name.split(" ").next().unwrap() {
-                "Lesser" => 0,
-                "Essence" => 1,
-                "Greater" => 2,
-                "Perfect" => 3,
-                _ => 4,
-            };
-            (sort, name)
-        }))
-        .collect::<Vec<_>>();
-
     CentralPanel::default().show(ctx, |ui| {
         ScrollArea::vertical().show(ui, |ui| {
             if ui.button("Save").clicked() {
@@ -407,7 +392,7 @@ pub fn show_page(page_state: &mut Page, ctx: &egui::Context, item: &mut ItemStat
                         let old_selected = dropdown(
                             ui,
                             currency,
-                            &currencies,
+                            &CURRENCIES,
                             &format!("currency_select_{i}"),
                             |c| c.name().to_string(),
                         );

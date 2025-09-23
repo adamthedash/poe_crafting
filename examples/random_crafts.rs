@@ -1,8 +1,8 @@
 use std::{collections::HashSet, path::Path};
 
 use poe_crafting::{
-    ESSENCES, ITEM_TIERS,
-    currency::{CURRENCIES, Currency},
+    CURRENCIES, ITEM_TIERS,
+    currency::Currency,
     init,
     item_state::{ItemState, Rarity, get_valid_mods_for_item},
 };
@@ -13,9 +13,7 @@ fn main() {
     let data_root = Path::new("/mnt/nvme_4tb/programming/data/poe2"); // desktop
     init(data_root);
 
-    let item_tiers = ITEM_TIERS.get().unwrap();
-
-    let bases = item_tiers.keys().collect::<Vec<_>>();
+    let bases = ITEM_TIERS.keys().collect::<Vec<_>>();
     let weights = vec![1.; bases.len()];
 
     for _ in 0..100 {
@@ -32,8 +30,8 @@ fn main() {
             // Select a random currency
             let currencies = CURRENCIES
                 .iter()
-                .chain(ESSENCES.get().unwrap())
                 .filter(|c| c.can_be_used(&item, &candidate_tiers, &HashSet::new()))
+                .copied()
                 .collect::<Vec<_>>();
             let weights = vec![1.; currencies.len()];
             let currency = random_choice().random_choice_f32(&currencies, &weights, 1)[0];

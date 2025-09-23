@@ -84,12 +84,10 @@ fn display_mod_select_grid(ui: &mut Ui, item: &mut ItemState) {
 }
 
 pub fn show_page(ctx: &egui::Context, item: &mut ItemState) {
-    let item_tiers = ITEM_TIERS.get().unwrap();
-
     egui::CentralPanel::default().show(ctx, |ui| {
         // ========== BASE ITEM ==============
         Grid::new("base_grid").num_columns(2).show(ui, |ui| {
-            let mut base_items = item_tiers.keys().collect::<Vec<_>>();
+            let mut base_items = ITEM_TIERS.keys().collect::<Vec<_>>();
             base_items.sort_unstable();
 
             ui.label("Base Item");

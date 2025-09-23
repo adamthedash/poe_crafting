@@ -122,8 +122,6 @@ impl ItemState {
 
 impl Display for ItemState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let stat_formatters = FORMATTERS.get().unwrap();
-
         writeln!(f, "{}", self.base_type)?;
         writeln!(f, "ilvl: {}", self.item_level)?;
         writeln!(f, "{:?}", self.rarity)?;
@@ -133,7 +131,7 @@ impl Display for ItemState {
             let modifier = &MODS[tier.mod_id];
 
             let formatters_key = modifier.stats.join("|");
-            if let Some(formatters) = stat_formatters.get(&formatters_key) {
+            if let Some(formatters) = FORMATTERS.get(&formatters_key) {
                 let formatter = get_matching_formatter(
                     formatters,
                     &tier
@@ -149,7 +147,7 @@ impl Display for ItemState {
                 // Per-stat formatters
                 for (stat_id, value_range) in modifier.stats.iter().zip(tier.value_ranges.chunks(1))
                 {
-                    let Some(formatters) = stat_formatters.get(stat_id) else {
+                    let Some(formatters) = FORMATTERS.get(stat_id) else {
                         panic!("No formatter for stat: {:?}", stat_id);
                     };
                     let formatter = get_matching_formatter(
@@ -174,9 +172,7 @@ impl Display for ItemState {
 
 /// Get the pool of mods that could ever roll on this item, regardless of its current state
 pub fn get_valid_mods_for_item(item: &ItemState) -> Vec<OpaqueIndex<Tier>> {
-    let item_tiers = ITEM_TIERS.get().unwrap();
-
-    item_tiers[&item.base_type]
+    ITEM_TIERS[&item.base_type]
         .iter()
         .map(|tier_id| TIERS.opaque(tier_id))
         .filter(|&tier_id| item.item_level >= TIERS[tier_id].ilvl)

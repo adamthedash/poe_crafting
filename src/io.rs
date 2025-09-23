@@ -6,8 +6,8 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    ESSENCES, MODS, TIERS,
-    currency::{CURRENCIES, Currency, CurrencyType},
+    CURRENCIES, MODS, TIERS,
+    currency::{Currency, CurrencyType},
     hashvec::OpaqueIndex,
     item_state::ItemState,
     strategy::Strategy,
@@ -70,12 +70,12 @@ impl<'de> Deserialize<'de> for CurrencyType {
         D: serde::Deserializer<'de>,
     {
         let name = String::deserialize(deserializer)?;
-        CURRENCIES
+        let currency = *CURRENCIES
             .iter()
-            .chain(ESSENCES.get().unwrap())
             .find(|c| c.name() == name)
-            .cloned()
-            .ok_or_else(|| serde::de::Error::custom(format!("Unknown currency: {name}")))
+            .ok_or_else(|| serde::de::Error::custom(format!("Unknown currency: {name}")))?;
+
+        Ok(currency.clone())
     }
 }
 

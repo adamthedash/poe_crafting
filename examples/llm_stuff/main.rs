@@ -2,7 +2,7 @@ use std::path::Path;
 
 use itertools::Itertools;
 use poe_crafting::{
-    ESSENCES, MODS, TIERS,
+    CURRENCIES, MODS, TIERS,
     currency::CurrencyType,
     init,
     item_state::{ItemState, Rarity, get_valid_mods_for_item},
@@ -20,34 +20,44 @@ fn main() {
         mods: vec![],
     };
 
-    ESSENCES.get().unwrap().iter().for_each(|e| {
-        let (name, tier_ids) = match e {
-            CurrencyType::Essence(essence) => (&essence.name, essence.tiers.get(&item.base_type)),
-            CurrencyType::PerfectEssence(essence) => {
-                (&essence.name, essence.tiers.get(&item.base_type))
-            }
-            _ => unreachable!(),
-        };
+    CURRENCIES
+        .iter()
+        .filter(|c| {
+            matches!(
+                c,
+                CurrencyType::Essence(_) | CurrencyType::PerfectEssence(_)
+            )
+        })
+        .for_each(|e| {
+            let (name, tier_ids) = match e {
+                CurrencyType::Essence(essence) => {
+                    (&essence.name, essence.tiers.get(&item.base_type))
+                }
+                CurrencyType::PerfectEssence(essence) => {
+                    (&essence.name, essence.tiers.get(&item.base_type))
+                }
+                _ => unreachable!(),
+            };
 
-        if ["Greater", "Perfect"]
-            .into_iter()
-            .any(|pre| name.contains(pre))
-            && let Some(tier_ids) = tier_ids
-        {
-            println!("{}", name);
-            for &tier_id in tier_ids {
-                let tier = &TIERS[tier_id];
-                let modifier = &MODS[tier.mod_id];
-                println!(
-                    "\t{} ({:?}), tags: {:?}, available levels: {:?}  ",
-                    modifier.group,
-                    tier.affix,
-                    modifier.tags,
-                    [tier.ilvl]
-                );
+            if ["Greater", "Perfect"]
+                .into_iter()
+                .any(|pre| name.contains(pre))
+                && let Some(tier_ids) = tier_ids
+            {
+                println!("{}", name);
+                for &tier_id in tier_ids {
+                    let tier = &TIERS[tier_id];
+                    let modifier = &MODS[tier.mod_id];
+                    println!(
+                        "\t{} ({:?}), tags: {:?}, available levels: {:?}  ",
+                        modifier.group,
+                        tier.affix,
+                        modifier.tags,
+                        [tier.ilvl]
+                    );
+                }
             }
-        }
-    });
+        });
 
     let candidate_tiers = get_valid_mods_for_item(&item);
 

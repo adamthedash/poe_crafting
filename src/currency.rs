@@ -1030,26 +1030,26 @@ impl CurrencyType {
 
         HashSet::from_iter(omens)
     }
-}
 
-pub static CURRENCIES: LazyLock<Vec<CurrencyType>> = LazyLock::new(|| {
-    vec![
-        CurrencyType::Transmute,
-        CurrencyType::GreaterTransmute,
-        CurrencyType::PerfectTransmute,
-        CurrencyType::Augmentation,
-        CurrencyType::GreaterAugmentation,
-        CurrencyType::PerfectAugmentation,
-        CurrencyType::Regal,
-        CurrencyType::GreaterRegal,
-        CurrencyType::PerfectRegal,
-        CurrencyType::Exalt,
-        CurrencyType::GreaterExalt,
-        CurrencyType::PerfectExalt,
-        CurrencyType::Annulment,
-        CurrencyType::Alchemy,
-        CurrencyType::Chaos,
-        CurrencyType::GreaterChaos,
-        CurrencyType::PerfectChaos,
-    ]
-});
+    pub const fn all() -> &'static [Self] {
+        &[
+            Self::Transmute,
+            Self::GreaterTransmute,
+            Self::PerfectTransmute,
+            Self::Augmentation,
+            Self::GreaterAugmentation,
+            Self::PerfectAugmentation,
+            Self::Regal,
+            Self::GreaterRegal,
+            Self::PerfectRegal,
+            Self::Exalt,
+            Self::GreaterExalt,
+            Self::PerfectExalt,
+            Self::Annulment,
+            Self::Alchemy,
+            Self::Chaos,
+            Self::GreaterChaos,
+            Self::PerfectChaos,
+        ]
+    }
+}
