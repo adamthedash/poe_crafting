@@ -898,6 +898,75 @@ impl PartialEq for PerfectEssence {
     }
 }
 
+pub struct Desecrate;
+impl Currency for Desecrate {
+    fn name(&self) -> &str {
+        "Descrate Item"
+    }
+
+    fn can_be_used(
+        &self,
+        item: &ItemState,
+        _candidate_tiers: &[OpaqueIndex<Tier>],
+        _omens: &HashSet<Omen>,
+    ) -> bool {
+        // TOOD: Check for existing veiled/desecrated mod
+        item.rarity == Rarity::Rare
+    }
+
+    fn craft(
+        &self,
+        item: &mut ItemState,
+        _candidate_tiers: &[OpaqueIndex<Tier>],
+        omens: &HashSet<Omen>,
+    ) {
+        // TODO: Clean up this monstrosity
+        let mut remove = 0; // 0 == neither, 1 == prefix, 2 == suffix, 3 == either
+
+        if omens.contains(&Omen::Sinistral) && !item.has_room(Affix::Prefix) {
+            remove = 1;
+        } else if omens.contains(&Omen::Dextral) && !item.has_room(Affix::Suffix) {
+            remove = 2;
+        } else if item.mods.len() == 6 {
+            remove = 3;
+        }
+
+        let mut annul_hm = HashSet::new();
+        match remove {
+            1 => {
+                annul_hm.insert(Omen::Sinistral);
+            }
+            2 => {
+                annul_hm.insert(Omen::Dextral);
+            }
+            _ => (),
+        }
+        if remove != 0 {
+            Annulment.craft(item, &[], &annul_hm);
+        }
+
+        let mut candidate_tiers: Box<dyn Iterator<Item = OpaqueIndex<Tier>>> =
+            Box::new([TIERS.opaque("VeiledPrefix"), TIERS.opaque("VeiledSuffix")].into_iter());
+
+        // Apply omens
+        if omens.contains(&Omen::Dextral) || !item.has_room(Affix::Prefix) {
+            // filter suffixes
+            candidate_tiers = Box::new(filter_affix(candidate_tiers, Affix::Suffix));
+        }
+        if omens.contains(&Omen::Sinistral) || !item.has_room(Affix::Suffix) {
+            // filter prefixes
+            candidate_tiers = Box::new(filter_affix(candidate_tiers, Affix::Prefix));
+        }
+
+        let candidate_tiers = candidate_tiers.collect::<Vec<_>>();
+
+        let weights = vec![1.; candidate_tiers.len()];
+        let choice = *random_choice().random_choice_f32(&candidate_tiers, &weights, 1)[0];
+
+        item.mods.push(choice);
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum CurrencyType {
     Transmute,
@@ -919,6 +988,7 @@ pub enum CurrencyType {
     PerfectChaos,
     Essence(Essence),
     PerfectEssence(PerfectEssence),
+    Desecrate,
 }
 
 impl Currency for CurrencyType {
@@ -943,6 +1013,7 @@ impl Currency for CurrencyType {
             Self::PerfectChaos => PerfectChaos.name(),
             Self::Essence(essence) => essence.name(),
             Self::PerfectEssence(essence) => essence.name(),
+            Self::Desecrate => Desecrate.name(),
         }
     }
 
@@ -976,6 +1047,7 @@ impl Currency for CurrencyType {
             Self::PerfectChaos => PerfectChaos.can_be_used(item, candidate_tiers, omens),
             Self::Essence(essence) => essence.can_be_used(item, candidate_tiers, omens),
             Self::PerfectEssence(essence) => essence.can_be_used(item, candidate_tiers, omens),
+            Self::Desecrate => Desecrate.can_be_used(item, candidate_tiers, omens),
         }
     }
 
@@ -1005,6 +1077,7 @@ impl Currency for CurrencyType {
             Self::PerfectChaos => PerfectChaos.craft(item, candidate_tiers, omens),
             Self::Essence(essence) => essence.craft(item, candidate_tiers, omens),
             Self::PerfectEssence(essence) => essence.craft(item, candidate_tiers, omens),
+            Self::Desecrate => Desecrate.craft(item, candidate_tiers, omens),
         }
     }
 }
@@ -1017,7 +1090,7 @@ impl CurrencyType {
         let omens = match self {
             Regal | GreaterRegal | PerfectRegal => vec![Homogenous],
             Annulment => vec![Sinistral, Dextral, Greater],
-            Alchemy | PerfectEssence(_) => vec![Sinistral, Dextral],
+            Alchemy | PerfectEssence(_) | Desecrate => vec![Sinistral, Dextral],
             Chaos | GreaterChaos | PerfectChaos => vec![Sinistral, Dextral, Whittling],
             Exalt | GreaterExalt | PerfectExalt => {
                 vec![Sinistral, Dextral, Homogenous, Greater]
@@ -1047,6 +1120,7 @@ impl CurrencyType {
             Self::Chaos,
             Self::GreaterChaos,
             Self::PerfectChaos,
+            Self::Desecrate,
         ]
     }
 }
