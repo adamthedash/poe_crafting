@@ -1,12 +1,9 @@
-use std::{
-    collections::HashSet,
-    ops::RangeInclusive,
-};
+use std::{collections::HashSet, ops::RangeInclusive};
 
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    TIERS_HV,
+    TIERS,
     currency::CurrencyType,
     hashvec::OpaqueIndex,
     item_state::{ItemState, Rarity},
@@ -42,12 +39,10 @@ pub enum ConditionGroup {
 }
 impl ConditionGroup {
     pub fn check(&self, item: &ItemState) -> bool {
-        let tiers = TIERS_HV.get().unwrap();
-
         let item_tiers = item
             .mods
             .iter()
-            .map(|&tier_id| &tiers[tier_id])
+            .map(|&tier_id| &TIERS[tier_id])
             .collect::<Vec<_>>();
 
         match self {

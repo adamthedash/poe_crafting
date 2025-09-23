@@ -2,7 +2,7 @@ use std::path::Path;
 
 use itertools::Itertools;
 use poe_crafting::{
-    ESSENCES, MODS_HV, TIERS_HV,
+    ESSENCES, MODS, TIERS,
     currency::CurrencyType,
     init,
     item_state::{ItemState, Rarity, get_valid_mods_for_item},
@@ -12,9 +12,6 @@ fn main() {
     // let data_root = Path::new("/home/adam/repos/data/poe"); // laptop
     let data_root = Path::new("/mnt/nvme_4tb/programming/data/poe2"); // desktop
     init(data_root);
-
-    let tiers = TIERS_HV.get().unwrap();
-    let mods = MODS_HV.get().unwrap();
 
     let item = ItemState {
         base_type: "Bow".to_string(),
@@ -39,8 +36,8 @@ fn main() {
         {
             println!("{}", name);
             for &tier_id in tier_ids {
-                let tier = &tiers[tier_id];
-                let modifier = &mods[tier.mod_id];
+                let tier = &TIERS[tier_id];
+                let modifier = &MODS[tier.mod_id];
                 println!(
                     "\t{} ({:?}), tags: {:?}, available levels: {:?}  ",
                     modifier.group,
@@ -56,7 +53,7 @@ fn main() {
 
     let candidate_tiers = candidate_tiers
         .iter()
-        .map(|&tier_id| &tiers[tier_id])
+        .map(|&tier_id| &TIERS[tier_id])
         .sorted_by_key(|tier| (&tier.affix, &tier.mod_id, tier.ilvl))
         .chunk_by(|tier| (tier.affix, &tier.mod_id));
     for ((affix, &mod_id), group) in &candidate_tiers {
@@ -65,7 +62,7 @@ fn main() {
             .map(|tier| tier.ilvl)
             .collect::<Vec<_>>();
 
-        let modifier = &mods[mod_id];
+        let modifier = &MODS[mod_id];
 
         println!(
             "{} ({:?}), tags: {:?}, available levels: {:?}  ",

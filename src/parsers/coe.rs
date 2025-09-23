@@ -3,11 +3,10 @@
 Parser for Craft of Exile's mod data JSON
 https://github.com/krakenbul/coe2weights
 */
-use serde_with::DisplayFromStr;
 use std::collections::HashMap;
 
 use serde::{Deserialize, Deserializer};
-use serde_with::serde_as;
+use serde_with::{DisplayFromStr, serde_as};
 
 use crate::types;
 

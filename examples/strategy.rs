@@ -1,7 +1,7 @@
 use std::{collections::HashSet, path::Path};
 
 use poe_crafting::{
-    MODS_HV,
+    MODS,
     currency::{Currency, CurrencyType},
     init,
     item_state::{ItemState, Rarity, get_valid_mods_for_item},
@@ -13,8 +13,6 @@ fn main() {
     let data_root = Path::new("/mnt/nvme_4tb/programming/data/poe2"); // desktop
     init(data_root);
 
-    let mods = MODS_HV.get().unwrap();
-
     let item = ItemState {
         base_type: "Bow".to_string(),
         item_level: 100,
@@ -25,44 +23,44 @@ fn main() {
 
     let desirable_magic_mods = vec![
         ModifierCondition {
-            mod_group: mods.get_opaque("LocalPhysicalDamage"),
+            mod_group: MODS.get_opaque("LocalPhysicalDamage"),
             levels: vec![65, 75],
         },
         ModifierCondition {
-            mod_group: mods.get_opaque("LocalFireDamage"),
+            mod_group: MODS.get_opaque("LocalFireDamage"),
 
             levels: vec![75, 81],
         },
         ModifierCondition {
-            mod_group: mods.get_opaque("LocalColdDamage"),
+            mod_group: MODS.get_opaque("LocalColdDamage"),
             levels: vec![75, 81],
         },
         ModifierCondition {
-            mod_group: mods.get_opaque("LocalLightningDamage"),
+            mod_group: MODS.get_opaque("LocalLightningDamage"),
             levels: vec![75, 81],
         },
         ModifierCondition {
-            mod_group: mods.get_opaque("LocalPhysicalDamagePercent"),
+            mod_group: MODS.get_opaque("LocalPhysicalDamagePercent"),
             levels: vec![60, 75, 82],
         },
         ModifierCondition {
-            mod_group: mods.get_opaque("IncreasedWeaponElementalDamagePercent"),
+            mod_group: MODS.get_opaque("IncreasedWeaponElementalDamagePercent"),
             levels: vec![81],
         },
         ModifierCondition {
-            mod_group: mods.get_opaque("AdditionalArrows"),
+            mod_group: MODS.get_opaque("AdditionalArrows"),
             levels: vec![82],
         },
         ModifierCondition {
-            mod_group: mods.get_opaque("LocalIncreasedAttackSpeed"),
+            mod_group: MODS.get_opaque("LocalIncreasedAttackSpeed"),
             levels: vec![37],
         },
         ModifierCondition {
-            mod_group: mods.get_opaque("LocalBaseCriticalStrikeChance"),
+            mod_group: MODS.get_opaque("LocalBaseCriticalStrikeChance"),
             levels: vec![59, 73],
         },
         ModifierCondition {
-            mod_group: mods.get_opaque("LocalCriticalStrikeMultiplier"),
+            mod_group: MODS.get_opaque("LocalCriticalStrikeMultiplier"),
             levels: vec![59, 73],
         },
     ];

@@ -6,7 +6,7 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    ESSENCES, MODS_HV, TIERS_HV,
+    ESSENCES, MODS, TIERS,
     currency::{CURRENCIES, Currency, CurrencyType},
     hashvec::OpaqueIndex,
     item_state::ItemState,
@@ -19,8 +19,7 @@ impl Serialize for OpaqueIndex<Modifier> {
     where
         S: serde::Serializer,
     {
-        let mods = MODS_HV.get().unwrap();
-        serializer.serialize_str(&mods[*self].group)
+        serializer.serialize_str(&MODS[*self].group)
     }
 }
 
@@ -29,9 +28,8 @@ impl<'de> Deserialize<'de> for OpaqueIndex<Modifier> {
     where
         D: serde::Deserializer<'de>,
     {
-        let mods = MODS_HV.get().unwrap();
         let mod_id = String::deserialize(deserializer)?;
-        let index = mods.get_opaque(&mod_id);
+        let index = MODS.get_opaque(&mod_id);
         Ok(index)
     }
 }
@@ -41,8 +39,7 @@ impl Serialize for OpaqueIndex<Tier> {
     where
         S: serde::Serializer,
     {
-        let tiers = TIERS_HV.get().unwrap();
-        serializer.serialize_str(&tiers[*self].id)
+        serializer.serialize_str(&TIERS[*self].id)
     }
 }
 
@@ -51,9 +48,8 @@ impl<'de> Deserialize<'de> for OpaqueIndex<Tier> {
     where
         D: serde::Deserializer<'de>,
     {
-        let tiers = TIERS_HV.get().unwrap();
         let tier_id = String::deserialize(deserializer)?;
-        let index = tiers.get_opaque(&tier_id);
+        let index = TIERS.get_opaque(&tier_id);
         Ok(index)
     }
 }

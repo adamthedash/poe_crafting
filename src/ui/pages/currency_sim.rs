@@ -1,20 +1,20 @@
-use crate::ui::Page;
 use std::{
     collections::{HashMap, HashSet},
     sync::{Arc, Mutex},
     thread::{self, JoinHandle},
 };
 
+use egui::{self, DragValue, Grid, ScrollArea, Ui};
+use itertools::Itertools;
+
 use crate::{
-    ESSENCES, MODS_HV, TIERS_HV,
+    ESSENCES, MODS, TIERS,
     currency::{CURRENCIES, Currency, CurrencyType},
     hashvec::OpaqueIndex,
     item_state::{ItemState, get_valid_mods_for_item},
     types::{Omen, Tier},
-    ui::{dropdown, omen_selection},
+    ui::{Page, dropdown, omen_selection},
 };
-use egui::{self, DragValue, Grid, ScrollArea, Ui};
-use itertools::Itertools;
 
 #[derive(Debug)]
 pub enum SimStatus {
@@ -80,14 +80,11 @@ fn run_sim(
 
 /// A grid showing the % chance for each mod to roll
 fn display_sim_results(ui: &mut Ui, results: &HashMap<OpaqueIndex<Tier>, usize>) {
-    let tiers = TIERS_HV.get().unwrap();
-    let mods = MODS_HV.get().unwrap();
-
     let total_iters = results.values().sum::<usize>();
 
     let affix_groups = results
         .iter()
-        .map(|(&tier_id, &count)| (&tiers[tier_id], count))
+        .map(|(&tier_id, &count)| (&TIERS[tier_id], count))
         .sorted_unstable_by_key(|(tier, _)| (tier.affix, &tier.mod_id, tier.ilvl))
         .chunk_by(|(tier, _)| tier.affix);
 
@@ -98,7 +95,7 @@ fn display_sim_results(ui: &mut Ui, results: &HashMap<OpaqueIndex<Tier>, usize>)
                 .num_columns(2)
                 .show(ui, |ui| {
                     for (&mod_id, group) in &mod_group.chunk_by(|(tier, _)| &tier.mod_id) {
-                        let modifier = &mods[mod_id];
+                        let modifier = &MODS[mod_id];
                         ui.label(&modifier.group);
 
                         let tier_counts = group.collect::<Vec<_>>();

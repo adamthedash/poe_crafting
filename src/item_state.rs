@@ -3,7 +3,7 @@ use std::{collections::HashSet, fmt::Display};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    FORMATTERS, ITEM_TIERS, MODS_HV, TIERS_HV,
+    FORMATTERS, ITEM_TIERS, MODS, TIERS,
     hashvec::OpaqueIndex,
     types::{Affix, BaseItemId, ModFamily, ModTag, Tier, get_matching_formatter},
 };
@@ -25,18 +25,16 @@ pub struct ItemState {
 
 impl ItemState {
     pub fn num_prefixes(&self) -> usize {
-        let tiers = TIERS_HV.get().unwrap();
         self.mods
             .iter()
-            .filter(|tier_id| tiers[**tier_id].affix == Affix::Prefix)
+            .filter(|tier_id| TIERS[**tier_id].affix == Affix::Prefix)
             .count()
     }
 
     pub fn num_suffixes(&self) -> usize {
-        let tiers = TIERS_HV.get().unwrap();
         self.mods
             .iter()
-            .filter(|tier_id| tiers[**tier_id].affix == Affix::Suffix)
+            .filter(|tier_id| TIERS[**tier_id].affix == Affix::Suffix)
             .count()
     }
 
@@ -56,14 +54,11 @@ impl ItemState {
 
     /// Set of unique mod tags
     pub fn mod_tags(&self) -> HashSet<ModTag> {
-        let tiers = TIERS_HV.get().unwrap();
-        let mods = MODS_HV.get().unwrap();
-
         self.mods
             .iter()
             .fold(HashSet::new(), |mut all_tags, tier_id| {
-                let tier = &tiers[*tier_id];
-                let modifier = &mods[tier.mod_id];
+                let tier = &TIERS[*tier_id];
+                let modifier = &MODS[tier.mod_id];
 
                 all_tags.extend(modifier.tags.iter().cloned());
 
@@ -73,14 +68,11 @@ impl ItemState {
 
     /// Mod familities for each tier
     pub fn mod_familities(&self) -> HashSet<ModFamily> {
-        let tiers = TIERS_HV.get().unwrap();
-        let mods = MODS_HV.get().unwrap();
-
         self.mods
             .iter()
             .map(|tier_id| {
-                let tier = &tiers[*tier_id];
-                let modifier = &mods[tier.mod_id];
+                let tier = &TIERS[*tier_id];
+                let modifier = &MODS[tier.mod_id];
                 &modifier.family
             })
             .cloned()
@@ -93,9 +85,6 @@ impl ItemState {
 
     /// Checks whether the current state of the item is valid
     pub fn is_valid(&self) -> bool {
-        let tiers = TIERS_HV.get().unwrap();
-        let mods = MODS_HV.get().unwrap();
-
         let num_mods_ok = match self.rarity {
             Rarity::Normal => self.mods.is_empty(),
             Rarity::Magic => self.mods.len() <= 2,
@@ -109,7 +98,7 @@ impl ItemState {
         };
 
         let mod_ilvls_ok = self.mods.iter().all(|tier_id| {
-            let tier = &tiers[*tier_id];
+            let tier = &TIERS[*tier_id];
 
             tier.ilvl <= self.item_level
         });
@@ -118,8 +107,8 @@ impl ItemState {
             .mods
             .iter()
             .map(|tier_id| {
-                let tier = &tiers[*tier_id];
-                let modifier = &mods[tier.mod_id];
+                let tier = &TIERS[*tier_id];
+                let modifier = &MODS[tier.mod_id];
 
                 &modifier.family
             })
@@ -133,8 +122,6 @@ impl ItemState {
 
 impl Display for ItemState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let tiers = TIERS_HV.get().unwrap();
-        let mods = MODS_HV.get().unwrap();
         let stat_formatters = FORMATTERS.get().unwrap();
 
         writeln!(f, "{}", self.base_type)?;
@@ -142,8 +129,8 @@ impl Display for ItemState {
         writeln!(f, "{:?}", self.rarity)?;
         writeln!(f, "=====================")?;
         for tier_id in &self.mods {
-            let tier = &tiers[*tier_id];
-            let modifier = &mods[tier.mod_id];
+            let tier = &TIERS[*tier_id];
+            let modifier = &MODS[tier.mod_id];
 
             let formatters_key = modifier.stats.join("|");
             if let Some(formatters) = stat_formatters.get(&formatters_key) {
@@ -187,12 +174,11 @@ impl Display for ItemState {
 
 /// Get the pool of mods that could ever roll on this item, regardless of its current state
 pub fn get_valid_mods_for_item(item: &ItemState) -> Vec<OpaqueIndex<Tier>> {
-    let tiers = TIERS_HV.get().unwrap();
     let item_tiers = ITEM_TIERS.get().unwrap();
 
     item_tiers[&item.base_type]
         .iter()
-        .map(|tier_id| tiers.get_opaque(tier_id))
-        .filter(|&tier_id| item.item_level >= tiers[tier_id].ilvl)
+        .map(|tier_id| TIERS.get_opaque(tier_id))
+        .filter(|&tier_id| item.item_level >= TIERS[tier_id].ilvl)
         .collect()
 }

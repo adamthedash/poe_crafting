@@ -1,23 +1,21 @@
+use egui::{self, Align, Checkbox, DragValue, Grid, Layout, Ui};
+use itertools::Itertools;
+
 use crate::{
-    ITEM_TIERS, MODS_HV, TIERS_HV,
+    ITEM_TIERS, MODS, TIERS,
     item_state::{ItemState, Rarity, get_valid_mods_for_item},
     types::Affix,
     ui::{dropdown, rarity_dropdown},
 };
-use egui::{self, Align, Checkbox, DragValue, Grid, Layout, Ui};
-use itertools::Itertools;
 
 /// A grid of all the mods that can roll on the item with some checkboxes to let the user modify
 /// the item
 fn display_mod_select_grid(ui: &mut Ui, item: &mut ItemState) {
-    let tiers = TIERS_HV.get().unwrap();
-    let mods = MODS_HV.get().unwrap();
-
     let candidate_tiers = get_valid_mods_for_item(item);
 
     let affix_groups = candidate_tiers
         .iter()
-        .map(|&tier_id| &tiers[tier_id])
+        .map(|&tier_id| &TIERS[tier_id])
         .sorted_unstable_by_key(|tier| (&tier.affix, &tier.mod_id, &tier.ilvl))
         .chunk_by(|tier| &tier.affix);
 
@@ -30,14 +28,14 @@ fn display_mod_select_grid(ui: &mut Ui, item: &mut ItemState) {
             .num_columns(3)
             .show(ui, |ui| {
                 for (&mod_id, group) in &mod_groups {
-                    ui.label(&mods[mod_id].group);
+                    ui.label(&MODS[mod_id].group);
 
                     // Tier ilvls
                     let item_tier = item
                         .mods
                         .iter()
                         .copied()
-                        .find(|&tier_id| tiers[tier_id].mod_id == mod_id);
+                        .find(|&tier_id| TIERS[tier_id].mod_id == mod_id);
 
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                         // https://github.com/emilk/egui/issues/2247
@@ -45,7 +43,7 @@ fn display_mod_select_grid(ui: &mut Ui, item: &mut ItemState) {
                         // & reversed element creation instead
                         let group = group.collect::<Vec<_>>();
                         for tier in group.into_iter().rev() {
-                            let group_tier_id = tiers.get_opaque(&tier.id);
+                            let group_tier_id = TIERS.get_opaque(&tier.id);
 
                             let label_text = format!("{:?}", tier.ilvl);
 
@@ -59,7 +57,7 @@ fn display_mod_select_grid(ui: &mut Ui, item: &mut ItemState) {
                                     item.mods.retain(|&tier_id| tier_id != group_tier_id);
                                 } else if item_tier.is_some() {
                                     // Mod tier swapped
-                                    item.mods.retain(|&tier_id| tiers[tier_id].mod_id != mod_id);
+                                    item.mods.retain(|&tier_id| TIERS[tier_id].mod_id != mod_id);
                                     item.mods.push(group_tier_id);
                                 } else if !item.has_room(tier.affix) {
                                     // If we're already at max affixes, do nothing
@@ -72,7 +70,7 @@ fn display_mod_select_grid(ui: &mut Ui, item: &mut ItemState) {
                     });
 
                     // Tags
-                    let modifier = &mods[mod_id];
+                    let modifier = &MODS[mod_id];
                     ui.horizontal(|ui| {
                         for tag in &modifier.tags {
                             ui.label(tag);
@@ -87,7 +85,6 @@ fn display_mod_select_grid(ui: &mut Ui, item: &mut ItemState) {
 
 pub fn show_page(ctx: &egui::Context, item: &mut ItemState) {
     let item_tiers = ITEM_TIERS.get().unwrap();
-    let tiers = TIERS_HV.get().unwrap();
 
     egui::CentralPanel::default().show(ctx, |ui| {
         // ========== BASE ITEM ==============
@@ -115,7 +112,7 @@ pub fn show_page(ctx: &egui::Context, item: &mut ItemState) {
             if item.item_level != old_ilvl {
                 // Ilvl changed, filter mods that are now too high
                 item.mods.retain(|&tier_id| {
-                    let tier = &tiers[tier_id];
+                    let tier = &TIERS[tier_id];
                     tier.ilvl >= item.item_level
                 });
             }
@@ -133,11 +130,11 @@ pub fn show_page(ctx: &egui::Context, item: &mut ItemState) {
                     Rarity::Rare => 3,
                 };
                 let prefixes = item.mods.iter().copied().filter(|tier_id| {
-                    let tier = &tiers[*tier_id];
+                    let tier = &TIERS[*tier_id];
                     tier.affix == Affix::Prefix
                 });
                 let suffixes = item.mods.iter().copied().filter(|tier_id| {
-                    let tier = &tiers[*tier_id];
+                    let tier = &TIERS[*tier_id];
                     tier.affix == Affix::Suffix
                 });
                 item.mods = prefixes

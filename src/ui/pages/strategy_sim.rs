@@ -1,4 +1,3 @@
-use crate::{io::SavedStrategy, strategy::Strategy, types::Omen, ui::Page};
 use std::{
     collections::HashSet,
     path::Path,
@@ -6,17 +5,21 @@ use std::{
     thread::{self, JoinHandle},
 };
 
-use crate::{
-    ESSENCES, MODS_HV, TIERS_HV,
-    currency::{CURRENCIES, Currency, CurrencyType},
-    hashvec::OpaqueIndex,
-    item_state::{ItemState, Rarity, get_valid_mods_for_item},
-    strategy::{Condition, ConditionGroup, ModifierCondition},
-    types::{Modifier, Tier},
-    ui::{dropdown, multi_select_checkboxes, omen_selection, range_selector, rarity_dropdown},
-};
 use egui::{self, CentralPanel, Color32, Frame, Grid, ScrollArea, Ui};
 use itertools::Itertools;
+
+use crate::{
+    ESSENCES, MODS, TIERS,
+    currency::{CURRENCIES, Currency, CurrencyType},
+    hashvec::OpaqueIndex,
+    io::SavedStrategy,
+    item_state::{ItemState, Rarity, get_valid_mods_for_item},
+    strategy::{Condition, ConditionGroup, ModifierCondition, Strategy},
+    types::{Modifier, Omen, Tier},
+    ui::{
+        Page, dropdown, multi_select_checkboxes, omen_selection, range_selector, rarity_dropdown,
+    },
+};
 
 #[derive(Debug)]
 pub enum SimStatus {
@@ -193,10 +196,7 @@ fn show_strategy_group(
                                     mod_id,
                                     &mod_groups,
                                     &format!("dropdown_mod_group_{key}_{i}"),
-                                    |mod_id| {
-                                        let mods = MODS_HV.get().unwrap();
-                                        mods[*mod_id].group.clone()
-                                    },
+                                    |mod_id| MODS[*mod_id].group.clone(),
                                 );
 
                                 remove
@@ -260,10 +260,7 @@ fn show_strategy_mod(
             &mut mod_condition.mod_group,
             &mod_groups,
             &format!("dropdown_mod_group_{key}"),
-            |mod_id| {
-                let mods = MODS_HV.get().unwrap();
-                mods[*mod_id].group.clone()
-            },
+            |mod_id| MODS[*mod_id].group.clone(),
         );
 
         if old.is_some() {
@@ -278,10 +275,7 @@ fn show_strategy_mod(
             .unwrap()
             .1
             .iter()
-            .map(|&tier_id| {
-                let tiers = TIERS_HV.get().unwrap();
-                &tiers[tier_id].ilvl
-            })
+            .map(|&tier_id| &TIERS[tier_id].ilvl)
             .collect::<Vec<_>>();
 
         multi_select_checkboxes(ui, &mut mod_condition.levels, &group_ilvls, |ilvl| {
@@ -313,18 +307,16 @@ fn get_tiers_mods(
     Vec<OpaqueIndex<Tier>>,
     Vec<(OpaqueIndex<Modifier>, Vec<OpaqueIndex<Tier>>)>,
 ) {
-    let tiers = TIERS_HV.get().unwrap();
-
     let candidate_tiers = get_valid_mods_for_item(item);
     let candidate_mods = candidate_tiers
         .iter()
         .sorted_unstable_by_key(|&&tier_id| {
-            let tier = &tiers[tier_id];
+            let tier = &TIERS[tier_id];
 
             (tier.mod_id, tier.ilvl)
         })
         .chunk_by(|&&tier_id| {
-            let tier = &tiers[tier_id];
+            let tier = &TIERS[tier_id];
 
             tier.mod_id
         });

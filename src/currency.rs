@@ -1,16 +1,18 @@
-use std::collections::{HashMap, HashSet};
-use std::sync::LazyLock;
+use std::{
+    collections::{HashMap, HashSet},
+    sync::LazyLock,
+};
 
 use random_choice::random_choice;
 
-use crate::crafting::{
-    filter_affix, filter_better_currency, filter_lowest_tier, filter_out_families, filter_tags,
-};
-use crate::hashvec::OpaqueIndex;
-use crate::types::{Affix, BaseItemId, Omen, Tier};
 use crate::{
-    MODS_HV, TIERS_HV,
+    MODS, TIERS,
+    crafting::{
+        filter_affix, filter_better_currency, filter_lowest_tier, filter_out_families, filter_tags,
+    },
+    hashvec::OpaqueIndex,
     item_state::{ItemState, Rarity},
+    types::{Affix, BaseItemId, Omen, Tier},
 };
 
 pub trait Currency {
@@ -134,8 +136,6 @@ impl Currency for Augmentation {
         candidate_tiers: &[OpaqueIndex<Tier>],
         _omens: &HashSet<Omen>,
     ) {
-        let tiers = TIERS_HV.get().unwrap();
-
         let mut candidate_tiers: Box<dyn Iterator<Item = OpaqueIndex<Tier>>> =
             Box::new(candidate_tiers.iter().copied());
 
@@ -153,7 +153,7 @@ impl Currency for Augmentation {
         // Roll a mod
         let weights = candidate_tiers
             .iter()
-            .map(|&tier_id| tiers[tier_id].weight as f32)
+            .map(|&tier_id| TIERS[tier_id].weight as f32)
             .collect::<Vec<_>>();
 
         let choice = *random_choice().random_choice_f32(&candidate_tiers, &weights, 1)[0];
@@ -311,8 +311,6 @@ impl Currency for Exalt {
     ) -> bool {
         item.rarity == Rarity::Rare && item.mods.len() < 6 && {
             // Omens
-            let tiers = TIERS_HV.get().unwrap();
-
             let mut candidate_tiers: Box<dyn Iterator<Item = OpaqueIndex<Tier>>> =
                 Box::new(candidate_tiers.iter().copied());
 
@@ -344,7 +342,7 @@ impl Currency for Exalt {
                 let unique_affixes = candidate_tiers
                     .iter()
                     .map(|&tier_id| {
-                        let tier = &tiers[tier_id];
+                        let tier = &TIERS[tier_id];
 
                         tier.affix
                     })
@@ -372,8 +370,6 @@ impl Currency for Exalt {
         candidate_tiers: &[OpaqueIndex<Tier>],
         omens: &HashSet<Omen>,
     ) {
-        let tiers = TIERS_HV.get().unwrap();
-
         let mut candidate_tiers: Box<dyn Iterator<Item = OpaqueIndex<Tier>>> =
             Box::new(candidate_tiers.iter().copied());
 
@@ -404,7 +400,7 @@ impl Currency for Exalt {
 
             let weights = candidate_tiers
                 .iter()
-                .map(|&tier_id| tiers[tier_id].weight as f32)
+                .map(|&tier_id| TIERS[tier_id].weight as f32)
                 .collect::<Vec<_>>();
 
             let choice = *random_choice()
@@ -711,9 +707,6 @@ impl Currency for Essence {
         _candidate_tiers: &[OpaqueIndex<Tier>],
         _omens: &HashSet<Omen>,
     ) -> bool {
-        let mods = MODS_HV.get().unwrap();
-        let tiers = TIERS_HV.get().unwrap();
-
         // must be magic
         if item.rarity != Rarity::Magic {
             return false;
@@ -725,12 +718,12 @@ impl Currency for Essence {
         };
         let new_tiers = new_tier_ids
             .iter()
-            .map(|&tier_id| &tiers[tier_id])
+            .map(|&tier_id| &TIERS[tier_id])
             .collect::<Vec<_>>();
 
         // Must not have a mod of the same family already
         // Assumption: all mods added have the same family
-        let new_mod_family = &mods[new_tiers.first().unwrap().mod_id].family;
+        let new_mod_family = &MODS[new_tiers.first().unwrap().mod_id].family;
         if item.mod_familities().contains(new_mod_family) {
             return false;
         }
@@ -783,9 +776,6 @@ impl Currency for PerfectEssence {
         _candidate_tiers: &[OpaqueIndex<Tier>],
         omens: &HashSet<Omen>,
     ) -> bool {
-        let mods = MODS_HV.get().unwrap();
-        let tiers = TIERS_HV.get().unwrap();
-
         // must be rare
         if item.rarity != Rarity::Rare {
             return false;
@@ -797,12 +787,12 @@ impl Currency for PerfectEssence {
         };
         let new_tiers = new_tier_ids
             .iter()
-            .map(|&tier_id| &tiers[tier_id])
+            .map(|&tier_id| &TIERS[tier_id])
             .collect::<Vec<_>>();
 
         // Must not have a mod of the same family already
         // Assumption: all mods added have the same family
-        let new_mod_family = &mods[new_tiers.first().unwrap().mod_id].family;
+        let new_mod_family = &MODS[new_tiers.first().unwrap().mod_id].family;
         if item.mod_familities().contains(new_mod_family) {
             return false;
         }
@@ -849,12 +839,10 @@ impl Currency for PerfectEssence {
         _candidate_tiers: &[OpaqueIndex<Tier>],
         omens: &HashSet<Omen>,
     ) {
-        let tiers = TIERS_HV.get().unwrap();
-
         let new_tier_ids = &self.tiers[&item.base_type];
         let new_tiers = new_tier_ids
             .iter()
-            .map(|&tier_id| &tiers[tier_id])
+            .map(|&tier_id| &TIERS[tier_id])
             .collect::<Vec<_>>();
 
         // Must have room for it

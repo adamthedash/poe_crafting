@@ -4,9 +4,9 @@ use std::{collections::HashMap, path::Path};
 use serde::{Deserialize, Deserializer, de::DeserializeOwned};
 
 use crate::{
-    TIERS_HV,
     currency::{CurrencyType, Essence, PerfectEssence},
     hashvec::HashVec,
+    internal::TIERS,
     types::{Affix, ModGroup, ModType, Modifier, StatID, Tier, TierId},
 };
 
@@ -164,8 +164,6 @@ impl Dats {
 }
 
 pub fn load_essences(dats: &Dats) -> Vec<CurrencyType> {
-    let tiers = TIERS_HV.get().unwrap();
-
     // Essence -> CoarseBaseId -> [ModId]
     let mut essence_base_mods = HashMap::<_, HashMap<_, _>>::new();
     dats.essence_mods.iter().for_each(|row| {
@@ -181,12 +179,12 @@ pub fn load_essences(dats: &Dats) -> Vec<CurrencyType> {
         // essencemods.OutcomeMods -> mods
         let mods = if let Some(mod_index) = row.Mod1 {
             // Single outcome
-            vec![tiers.get_opaque(&dats.mods[mod_index].Id)]
+            vec![TIERS.get_opaque(&dats.mods[mod_index].Id)]
         } else {
             // Multiple outcomes
             row.OutcomeMods
                 .iter()
-                .map(|&mod_index| tiers.get_opaque(&dats.mods[mod_index].Id))
+                .map(|&mod_index| TIERS.get_opaque(&dats.mods[mod_index].Id))
                 .collect()
         };
 

@@ -1,9 +1,8 @@
 #![allow(non_snake_case)]
-use serde_with::DisplayFromStr;
 use std::{collections::HashMap, fs::File, io::BufReader, path::Path};
 
 use serde::Deserialize;
-use serde_with::serde_as;
+use serde_with::{DisplayFromStr, serde_as};
 
 use crate::types::TierId;
 
