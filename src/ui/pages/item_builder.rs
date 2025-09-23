@@ -43,7 +43,7 @@ fn display_mod_select_grid(ui: &mut Ui, item: &mut ItemState) {
                         // & reversed element creation instead
                         let group = group.collect::<Vec<_>>();
                         for tier in group.into_iter().rev() {
-                            let group_tier_id = TIERS.get_opaque(&tier.id);
+                            let group_tier_id = TIERS.opaque(&tier.id);
 
                             let label_text = format!("{:?}", tier.ilvl);
 

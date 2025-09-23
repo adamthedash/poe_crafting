@@ -29,8 +29,8 @@ impl<'de> Deserialize<'de> for OpaqueIndex<Modifier> {
         D: serde::Deserializer<'de>,
     {
         let mod_id = String::deserialize(deserializer)?;
-        let index = MODS.get_opaque(&mod_id);
-        Ok(index)
+        MODS.get_opaque(&mod_id)
+            .ok_or_else(|| serde::de::Error::custom(format!("Unknown mod: {mod_id}")))
     }
 }
 
@@ -49,8 +49,9 @@ impl<'de> Deserialize<'de> for OpaqueIndex<Tier> {
         D: serde::Deserializer<'de>,
     {
         let tier_id = String::deserialize(deserializer)?;
-        let index = TIERS.get_opaque(&tier_id);
-        Ok(index)
+        TIERS
+            .get_opaque(&tier_id)
+            .ok_or_else(|| serde::de::Error::custom(format!("Unknown tier: {tier_id}")))
     }
 }
 
@@ -86,19 +87,20 @@ pub struct SavedStrategy {
 
 impl SavedStrategy {
     /// Serialise the strategy to a JSON file
-    pub fn save(&self, path: &Path) {
+    pub fn save(&self, path: &Path) -> anyhow::Result<()> {
         let mut file = fs::OpenOptions::new()
             .write(true)
             .truncate(true)
             .create(true)
-            .open(path)
-            .unwrap();
-        serde_json::to_writer(&mut file, self).unwrap();
+            .open(path)?;
+        serde_json::to_writer(&mut file, self)?;
+        Ok(())
     }
 
     /// Load the strategy from a JSON file
-    pub fn load(path: &Path) -> Self {
-        let file = File::open(path).unwrap();
-        serde_json::from_reader(file).unwrap()
+    pub fn load(path: &Path) -> anyhow::Result<Self> {
+        let file = File::open(path)?;
+        let strategy = serde_json::from_reader(file)?;
+        Ok(strategy)
     }
 }

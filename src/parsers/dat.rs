@@ -179,12 +179,12 @@ pub fn load_essences(dats: &Dats) -> Vec<CurrencyType> {
         // essencemods.OutcomeMods -> mods
         let mods = if let Some(mod_index) = row.Mod1 {
             // Single outcome
-            vec![TIERS.get_opaque(&dats.mods[mod_index].Id)]
+            vec![TIERS.opaque(&dats.mods[mod_index].Id)]
         } else {
             // Multiple outcomes
             row.OutcomeMods
                 .iter()
-                .map(|&mod_index| TIERS.get_opaque(&dats.mods[mod_index].Id))
+                .map(|&mod_index| TIERS.opaque(&dats.mods[mod_index].Id))
                 .collect()
         };
 
@@ -271,7 +271,7 @@ pub fn load_mod_tiers(dats: &Dats) -> (HashVec<TierId, Tier>, HashVec<ModGroup, 
             let mod_id = if !mod_stats.contains_key(mod_group) {
                 mod_stats.insert(mod_group.clone(), modifier)
             } else {
-                mod_stats.get_opaque(mod_group)
+                mod_stats.opaque(mod_group)
             };
 
             tiers.insert(

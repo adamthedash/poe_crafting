@@ -23,44 +23,44 @@ fn main() {
 
     let desirable_magic_mods = vec![
         ModifierCondition {
-            mod_group: MODS.get_opaque("LocalPhysicalDamage"),
+            mod_group: MODS.opaque("LocalPhysicalDamage"),
             levels: vec![65, 75],
         },
         ModifierCondition {
-            mod_group: MODS.get_opaque("LocalFireDamage"),
+            mod_group: MODS.opaque("LocalFireDamage"),
 
             levels: vec![75, 81],
         },
         ModifierCondition {
-            mod_group: MODS.get_opaque("LocalColdDamage"),
+            mod_group: MODS.opaque("LocalColdDamage"),
             levels: vec![75, 81],
         },
         ModifierCondition {
-            mod_group: MODS.get_opaque("LocalLightningDamage"),
+            mod_group: MODS.opaque("LocalLightningDamage"),
             levels: vec![75, 81],
         },
         ModifierCondition {
-            mod_group: MODS.get_opaque("LocalPhysicalDamagePercent"),
+            mod_group: MODS.opaque("LocalPhysicalDamagePercent"),
             levels: vec![60, 75, 82],
         },
         ModifierCondition {
-            mod_group: MODS.get_opaque("IncreasedWeaponElementalDamagePercent"),
+            mod_group: MODS.opaque("IncreasedWeaponElementalDamagePercent"),
             levels: vec![81],
         },
         ModifierCondition {
-            mod_group: MODS.get_opaque("AdditionalArrows"),
+            mod_group: MODS.opaque("AdditionalArrows"),
             levels: vec![82],
         },
         ModifierCondition {
-            mod_group: MODS.get_opaque("LocalIncreasedAttackSpeed"),
+            mod_group: MODS.opaque("LocalIncreasedAttackSpeed"),
             levels: vec![37],
         },
         ModifierCondition {
-            mod_group: MODS.get_opaque("LocalBaseCriticalStrikeChance"),
+            mod_group: MODS.opaque("LocalBaseCriticalStrikeChance"),
             levels: vec![59, 73],
         },
         ModifierCondition {
-            mod_group: MODS.get_opaque("LocalCriticalStrikeMultiplier"),
+            mod_group: MODS.opaque("LocalCriticalStrikeMultiplier"),
             levels: vec![59, 73],
         },
     ];

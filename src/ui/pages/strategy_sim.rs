@@ -358,7 +358,7 @@ pub fn show_page(page_state: &mut Page, ctx: &egui::Context, item: &mut ItemStat
         ScrollArea::vertical().show(ui, |ui| {
             if ui.button("Save").clicked() {
                 // Serialise strategy to JSON
-                SavedStrategy {
+                let _ = SavedStrategy {
                     base_item: item.clone(),
                     strategy: strategy.clone(),
                 }
@@ -367,9 +367,11 @@ pub fn show_page(page_state: &mut Page, ctx: &egui::Context, item: &mut ItemStat
             if ui.button("Load").clicked() {
                 // Load strategy, TODO: verify that it's valid?
                 let saved_strategy = SavedStrategy::load(Path::new("strat.json"));
-                *strategy = saved_strategy.strategy;
-                *item = saved_strategy.base_item;
-                (candidate_tiers, candidate_mods) = get_tiers_mods(item);
+                if let Ok(saved_strategy) = saved_strategy {
+                    *strategy = saved_strategy.strategy;
+                    *item = saved_strategy.base_item;
+                    (candidate_tiers, candidate_mods) = get_tiers_mods(item);
+                }
             }
 
             let order_action = strategy

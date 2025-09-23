@@ -178,7 +178,7 @@ pub fn get_valid_mods_for_item(item: &ItemState) -> Vec<OpaqueIndex<Tier>> {
 
     item_tiers[&item.base_type]
         .iter()
-        .map(|tier_id| TIERS.get_opaque(tier_id))
+        .map(|tier_id| TIERS.opaque(tier_id))
         .filter(|&tier_id| item.item_level >= TIERS[tier_id].ilvl)
         .collect()
 }

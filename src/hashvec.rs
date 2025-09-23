@@ -88,12 +88,21 @@ where
     K: Eq + Hash,
 {
     /// Get the cheap-to-use opaque key
-    pub fn get_opaque<Q>(&self, key: &Q) -> OpaqueIndex<V>
+    pub fn opaque<Q>(&self, key: &Q) -> OpaqueIndex<V>
     where
         K: Borrow<Q>,
         Q: Hash + Eq + ?Sized,
     {
         self.hm[key]
+    }
+
+    /// Get the cheap-to-use opaque key
+    pub fn get_opaque<Q>(&self, key: &Q) -> Option<OpaqueIndex<V>>
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq + ?Sized,
+    {
+        self.hm.get(key).copied()
     }
 
     /// Hashmap-like lookup
@@ -102,7 +111,7 @@ where
         K: Borrow<Q>,
         Q: Hash + Eq + ?Sized,
     {
-        &self[self.get_opaque(key)]
+        &self[self.opaque(key)]
     }
 
     // Insert a new pair into the HashVec
@@ -169,7 +178,7 @@ mod tests {
         }
 
         assert_eq!(hash_vec.by_key("3"), &3);
-        assert_eq!(hash_vec.get_opaque("3").index, 3);
+        assert_eq!(hash_vec.opaque("3").index, 3);
         assert_eq!(hash_vec[OpaqueIndex::new(3)], 3);
     }
 }
