@@ -180,27 +180,30 @@ impl Dats {
         Self {
             mods: ModsRecord::load_from_bytes(include_bytes!("../../data/tables/data/mods.csv"))
                 .collect(),
-            mod_type: ModTypeRecord::load_from_path(&data_root.join("data/modtype.csv")).collect(),
-            mod_family: ModFamilyRecord::load_from_path(&data_root.join("data/modfamily.csv"))
+            mod_type: ModTypeRecord::load_from_bytes(include_bytes!("../../data/tables/data/modtype.csv"))
                 .collect(),
-            stats: StatRecord::load_from_path(&data_root.join("data/stats.csv")).collect(),
-            base_item_types: BaseItemTypesRecord::load_from_path(
-                &data_root.join("data/baseitemtypes.csv"),
-            )
-            .collect(),
-            item_classes: ItemClassesRecord::load_from_path(
-                &data_root.join("data/itemclasses.csv"),
-            )
-            .collect(),
-            tags: TagsRecord::load_from_path(&data_root.join("data/tags.csv")).collect(),
-            essences: EssencesRecord::load_from_path(&data_root.join("data/essences.csv"))
+            mod_family: ModFamilyRecord::load_from_bytes(include_bytes!("../../data/tables/data/modfamily.csv"))
                 .collect(),
-            essence_target_item_categories: EssenceTargetItemCategoriesRecord::load_from_path(
-                &data_root.join("data/essencetargetitemcategories.csv"),
+            stats: StatRecord::load_from_bytes(include_bytes!("../../data/tables/data/stats.csv"))
+                .collect(),
+            base_item_types: BaseItemTypesRecord::load_from_bytes(
+                include_bytes!("../../data/tables/data/baseitemtypes.csv"),
             )
             .collect(),
-            essence_mods: EssenceModsRecord::load_from_path(
-                &data_root.join("data/essencemods.csv"),
+            item_classes: ItemClassesRecord::load_from_bytes(
+                include_bytes!("../../data/tables/data/itemclasses.csv"),
+            )
+            .collect(),
+            tags: TagsRecord::load_from_bytes(include_bytes!("../../data/tables/data/tags.csv"))
+                .collect(),
+            essences: EssencesRecord::load_from_bytes(include_bytes!("../../data/tables/data/essences.csv"))
+                .collect(),
+            essence_target_item_categories: EssenceTargetItemCategoriesRecord::load_from_bytes(
+                include_bytes!("../../data/tables/data/essencetargetitemcategories.csv"),
+            )
+            .collect(),
+            essence_mods: EssenceModsRecord::load_from_bytes(
+                include_bytes!("../../data/tables/data/essencemods.csv"),
             )
             .collect(),
         }
