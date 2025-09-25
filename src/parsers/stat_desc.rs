@@ -40,3 +40,7 @@ pub struct TradeStat {
 pub fn load(path: &Path) -> Root {
     serde_json::from_reader(BufReader::new(File::open(path).unwrap())).unwrap()
 }
+
+pub fn load_embedded() -> Root {
+    serde_json::from_slice(include_bytes!("../../data/stat_descriptions.json")).unwrap()
+}

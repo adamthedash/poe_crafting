@@ -71,7 +71,8 @@ pub static FORMATTERS: LazyLock<&HashMap<String, Vec<StatFormatter>>> = LazyLock
 /// -> stat_descriptions.json      - https://repoe-fork.github.io/poe2/stat_translations/stat_descriptions.json
 pub fn init(data_root: &Path) {
     // Load weight data
-    let poe2db_root = poe2db::load(&data_root.join("coe/poe2db_data_altered_weights.json"));
+    // let poe2db_root = poe2db::load(&data_root.join("coe/poe2db_data_altered_weights.json"));
+    let poe2db_root = poe2db::load_embedded();
 
     // Create TierId -> weight LUT
     let mut tier_weights = HashMap::new();
@@ -101,7 +102,8 @@ pub fn init(data_root: &Path) {
     ITEM_TIERS_INTERNAL.set(base_tiers).unwrap();
 
     // Load mod groups from dat files
-    let dat_tables = Dats::load_tables(&data_root.join("tables"));
+    // let dat_tables = Dats::load_tables(&data_root.join("tables"));
+    let dat_tables = Dats::load_tables_embedded();
 
     // Load ModGroup -> [Tier] LUT from dat files
     // Load ModGroup -> [Stat] LUT
@@ -116,7 +118,8 @@ pub fn init(data_root: &Path) {
     ESSENCES_INTERNAL.set(load_essences(&dat_tables)).unwrap();
 
     // Load stat descriptions
-    let stat_desc_root = stat_desc::load(&data_root.join("stat_descriptions.json"));
+    // let stat_desc_root = stat_desc::load(&data_root.join("stat_descriptions.json"));
+    let stat_desc_root = stat_desc::load_embedded();
 
     // Create StatID -> [Formatter] LUT
     let mut stat_formatters = StatFormatters::new();

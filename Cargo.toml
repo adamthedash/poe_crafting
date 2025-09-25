@@ -25,3 +25,9 @@ name = "llm_stuff"
 
 [[example]]
 name = "strategy"
+
+[[bin]]
+name = "bake_assets"
+
+[[bin]]
+name = "app"

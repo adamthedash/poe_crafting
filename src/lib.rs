@@ -4,7 +4,7 @@ pub mod hashvec;
 mod internal;
 pub mod io;
 pub mod item_state;
-mod parsers;
+pub mod parsers;
 pub mod strategy;
 pub mod types;
 pub mod ui;

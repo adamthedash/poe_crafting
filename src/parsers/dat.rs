@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 use std::{collections::HashMap, path::Path};
 
-use serde::{Deserialize, Deserializer, de::DeserializeOwned};
+use serde::{Deserialize, Deserializer, Serialize, Serializer, de::DeserializeOwned};
 
 use crate::{
     currency::{CurrencyType, Essence, PerfectEssence},
@@ -18,6 +18,15 @@ where
 {
     let s = String::deserialize(deserializer)?;
     serde_json::from_str(&s).map_err(serde::de::Error::custom)
+}
+
+fn serialize_json_encoded<T, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+    T: Serialize,
+{
+    let s = serde_json::to_string(value).unwrap();
+    serializer.serialize_str(&s)
 }
 
 /// Helper trait to make CSV record loading easier
@@ -39,7 +48,21 @@ pub trait RecordLoader: DeserializeOwned {
 
 impl<T: DeserializeOwned> RecordLoader for T {}
 
-#[derive(Deserialize)]
+pub trait RecordSaver {
+    fn save_to_csv(&self, path: &Path);
+}
+
+impl<T: Serialize> RecordSaver for Vec<T> {
+    fn save_to_csv(&self, path: &Path) {
+        let mut writer =
+            csv::Writer::from_path(path).unwrap_or_else(|_| panic!("Failed to write: {:?}", path));
+        for record in self {
+            writer.serialize(record).unwrap();
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize)]
 pub struct ModsRecord {
     /// Eg. Strength6
     pub Id: TierId,
@@ -47,10 +70,16 @@ pub struct ModsRecord {
     pub ModType: usize,
     pub Domain: usize,
 
-    #[serde(deserialize_with = "deserialize_json_encoded")]
+    #[serde(
+        deserialize_with = "deserialize_json_encoded",
+        serialize_with = "serialize_json_encoded"
+    )]
     pub Families: Vec<usize>,
     // Mod Tags
-    #[serde(deserialize_with = "deserialize_json_encoded")]
+    #[serde(
+        deserialize_with = "deserialize_json_encoded",
+        serialize_with = "serialize_json_encoded"
+    )]
     pub ImplicitTags: Vec<usize>,
     /// Affix
     pub GenerationType: u32,
@@ -64,61 +93,76 @@ pub struct ModsRecord {
     pub Stat3: Option<usize>,
     pub Stat4: Option<usize>,
     // /// Stat value ranges
-    #[serde(deserialize_with = "deserialize_json_encoded")]
+    #[serde(
+        deserialize_with = "deserialize_json_encoded",
+        serialize_with = "serialize_json_encoded"
+    )]
     pub Stat1Value: [i32; 2],
-    #[serde(deserialize_with = "deserialize_json_encoded")]
+    #[serde(
+        deserialize_with = "deserialize_json_encoded",
+        serialize_with = "serialize_json_encoded"
+    )]
     pub Stat2Value: [i32; 2],
-    #[serde(deserialize_with = "deserialize_json_encoded")]
+    #[serde(
+        deserialize_with = "deserialize_json_encoded",
+        serialize_with = "serialize_json_encoded"
+    )]
     pub Stat3Value: [i32; 2],
-    #[serde(deserialize_with = "deserialize_json_encoded")]
+    #[serde(
+        deserialize_with = "deserialize_json_encoded",
+        serialize_with = "serialize_json_encoded"
+    )]
     pub Stat4Value: [i32; 2],
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct ModTypeRecord {
     pub Name: ModGroup,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct ModFamilyRecord {
     pub Id: ModGroup,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct StatRecord {
     pub Id: StatID,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct BaseItemTypesRecord {
     pub Name: String,
     pub ItemClass: usize,
     pub ModDomain: usize,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct ItemClassesRecord {
     pub Id: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct TagsRecord {
     pub Id: String,
     pub DisplayString: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct EssencesRecord {
     BaseItemType: usize,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct EssenceTargetItemCategoriesRecord {
-    #[serde(deserialize_with = "deserialize_json_encoded")]
+    #[serde(
+        deserialize_with = "deserialize_json_encoded",
+        serialize_with = "serialize_json_encoded"
+    )]
     ItemClasses: Vec<usize>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct EssenceModsRecord {
     pub Essence: usize,
     pub TargetItemCategory: usize,
@@ -129,7 +173,10 @@ pub struct EssenceModsRecord {
     /// Eg. +# to Strength, Dexterity or Intelligence
     pub DisplayMod: Option<usize>,
     /// The possible outcome mods for multi-outcome essences
-    #[serde(deserialize_with = "deserialize_json_encoded")]
+    #[serde(
+        deserialize_with = "deserialize_json_encoded",
+        serialize_with = "serialize_json_encoded"
+    )]
     pub OutcomeMods: Vec<usize>,
 }
 
@@ -176,35 +223,45 @@ impl Dats {
         }
     }
 
+    pub fn save_to_csv(&self, root: &Path) {
+        self.mods.save_to_csv(&root.join("data/mods.csv"));
+    }
+
     pub fn load_tables_embedded() -> Self {
         Self {
             mods: ModsRecord::load_from_bytes(include_bytes!("../../data/tables/data/mods.csv"))
                 .collect(),
-            mod_type: ModTypeRecord::load_from_bytes(include_bytes!("../../data/tables/data/modtype.csv"))
-                .collect(),
-            mod_family: ModFamilyRecord::load_from_bytes(include_bytes!("../../data/tables/data/modfamily.csv"))
-                .collect(),
+            mod_type: ModTypeRecord::load_from_bytes(include_bytes!(
+                "../../data/tables/data/modtype.csv"
+            ))
+            .collect(),
+            mod_family: ModFamilyRecord::load_from_bytes(include_bytes!(
+                "../../data/tables/data/modfamily.csv"
+            ))
+            .collect(),
             stats: StatRecord::load_from_bytes(include_bytes!("../../data/tables/data/stats.csv"))
                 .collect(),
-            base_item_types: BaseItemTypesRecord::load_from_bytes(
-                include_bytes!("../../data/tables/data/baseitemtypes.csv"),
-            )
+            base_item_types: BaseItemTypesRecord::load_from_bytes(include_bytes!(
+                "../../data/tables/data/baseitemtypes.csv"
+            ))
             .collect(),
-            item_classes: ItemClassesRecord::load_from_bytes(
-                include_bytes!("../../data/tables/data/itemclasses.csv"),
-            )
+            item_classes: ItemClassesRecord::load_from_bytes(include_bytes!(
+                "../../data/tables/data/itemclasses.csv"
+            ))
             .collect(),
             tags: TagsRecord::load_from_bytes(include_bytes!("../../data/tables/data/tags.csv"))
                 .collect(),
-            essences: EssencesRecord::load_from_bytes(include_bytes!("../../data/tables/data/essences.csv"))
-                .collect(),
+            essences: EssencesRecord::load_from_bytes(include_bytes!(
+                "../../data/tables/data/essences.csv"
+            ))
+            .collect(),
             essence_target_item_categories: EssenceTargetItemCategoriesRecord::load_from_bytes(
                 include_bytes!("../../data/tables/data/essencetargetitemcategories.csv"),
             )
             .collect(),
-            essence_mods: EssenceModsRecord::load_from_bytes(
-                include_bytes!("../../data/tables/data/essencemods.csv"),
-            )
+            essence_mods: EssenceModsRecord::load_from_bytes(include_bytes!(
+                "../../data/tables/data/essencemods.csv"
+            ))
             .collect(),
         }
     }
