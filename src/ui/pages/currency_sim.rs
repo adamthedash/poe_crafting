@@ -99,7 +99,7 @@ fn display_sim_results(ui: &mut Ui, results: &HashMap<OpaqueIndex<Tier>, usize>)
                         ui.label(&modifier.group);
 
                         let tier_counts = group.collect::<Vec<_>>();
-                        Grid::new(format!("results_grid_{}", modifier.group))
+                        Grid::new(format!("results_grid_{:?}_{}", affix, modifier.group))
                             .num_columns(tier_counts.len())
                             .show(ui, |ui| {
                                 // Ilvls on top row
