@@ -12,13 +12,13 @@ https://repoe-fork.github.io/poe2/stat_translations/stat_descriptions.json
 ["trade_stats"][0]["text"]: Format strings as they appear on trade - this looks like the best
         bet for matching to CoE weights. Not present for all stats
 */
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::types::StatFormatter;
 
 pub type Root = Vec<Modifier>;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Modifier {
     /// Eg. additional_strength
     pub ids: Vec<String>,
@@ -26,7 +26,7 @@ pub struct Modifier {
     pub trade_stats: Option<Vec<TradeStat>>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct TradeStat {
     /// Eg. "desecrated.stat_123456"
     pub id: String,
@@ -41,6 +41,12 @@ pub fn load(path: &Path) -> Root {
     serde_json::from_reader(BufReader::new(File::open(path).unwrap())).unwrap()
 }
 
+pub fn save(path: &Path, root: &Root) {
+    let writer = File::create(path).unwrap();
+    serde_json::to_writer(writer, root).unwrap();
+}
+
+#[cfg(feature = "embed_data")]
 pub fn load_embedded() -> Root {
     serde_json::from_slice(include_bytes!("../../data/stat_descriptions.json")).unwrap()
 }

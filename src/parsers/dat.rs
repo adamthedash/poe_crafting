@@ -1,5 +1,5 @@
 #![allow(non_snake_case)]
-use std::{collections::HashMap, path::Path};
+use std::{collections::HashMap, fs, path::Path};
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de::DeserializeOwned};
 
@@ -224,20 +224,26 @@ impl Dats {
     }
 
     pub fn save_to_csv(&self, root: &Path) {
+        fs::create_dir_all(root.join("data")).unwrap();
+
         self.mods.save_to_csv(&root.join("data/mods.csv"));
         self.mod_type.save_to_csv(&root.join("data/modtype.csv"));
-        self.mod_family.save_to_csv(&root.join("data/modfamily.csv"));
+        self.mod_family
+            .save_to_csv(&root.join("data/modfamily.csv"));
         self.stats.save_to_csv(&root.join("data/stats.csv"));
         self.base_item_types
             .save_to_csv(&root.join("data/baseitemtypes.csv"));
-        self.item_classes.save_to_csv(&root.join("data/itemclasses.csv"));
+        self.item_classes
+            .save_to_csv(&root.join("data/itemclasses.csv"));
         self.tags.save_to_csv(&root.join("data/tags.csv"));
         self.essences.save_to_csv(&root.join("data/essences.csv"));
         self.essence_target_item_categories
             .save_to_csv(&root.join("data/essencetargetitemcategories.csv"));
-        self.essence_mods.save_to_csv(&root.join("data/essencemods.csv"));
+        self.essence_mods
+            .save_to_csv(&root.join("data/essencemods.csv"));
     }
 
+    #[cfg(feature = "embed_data")]
     pub fn load_tables_embedded() -> Self {
         Self {
             mods: ModsRecord::load_from_bytes(include_bytes!("../../data/tables/data/mods.csv"))

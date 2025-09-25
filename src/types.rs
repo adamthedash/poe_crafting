@@ -102,7 +102,7 @@ pub type ItemMods = HashMap<BaseItemId, Vec<TierId>>;
 ///     Not sure if theres any weirder examples
 ///     1) Attempt to look up by all [StatID]s for a mod
 ///     2) Fall back to looking up each StatID individually
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, Serialize)]
 pub struct StatFormatter {
     /// When this formatter is applied
     #[serde(rename = "condition")]
@@ -198,7 +198,7 @@ pub fn get_matching_formatter<'a>(
         })
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, Serialize)]
 pub struct Condition {
     pub min: Option<i32>,
     pub max: Option<i32>,

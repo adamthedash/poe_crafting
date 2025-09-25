@@ -1,21 +1,21 @@
 #![allow(non_snake_case)]
 use std::{collections::HashMap, fs::File, io::BufReader, path::Path};
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_with::{DisplayFromStr, serde_as};
 
 use crate::types::TierId;
 
 pub type Root = HashMap<String, ItemRoot>;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ItemRoot {
     pub opt: Opt,
     pub normal: Vec<Modifier>,
 }
 
 #[serde_as]
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Opt {
     pub ItemClassesCode: String,
     #[serde_as(as = "DisplayFromStr")]
@@ -23,7 +23,7 @@ pub struct Opt {
 }
 
 #[serde_as]
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Modifier {
     pub Code: TierId,
     #[serde_as(as = "DisplayFromStr")]
@@ -34,6 +34,12 @@ pub fn load(path: &Path) -> Root {
     serde_json::from_reader(BufReader::new(File::open(path).unwrap())).unwrap()
 }
 
+pub fn save(path: &Path, root: &Root) {
+    let writer = File::create(path).unwrap();
+    serde_json::to_writer(writer, root).unwrap();
+}
+
+#[cfg(feature = "embed_data")]
 pub fn load_embedded() -> Root {
     serde_json::from_slice(include_bytes!(
         "../../data/coe/poe2db_data_altered_weights.json"
