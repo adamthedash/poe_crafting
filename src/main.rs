@@ -5,7 +5,7 @@ use poe_crafting::{
     item_state::{ItemState, Rarity},
     ui::{
         Page,
-        pages::{currency_sim, item_builder, strategy_sim},
+        pages::{currency_sim, item_builder, strategy_sim, ui_debug},
     },
 };
 
@@ -30,8 +30,8 @@ impl Default for MyEguiApp {
 
 impl MyEguiApp {
     fn new(_cc: &eframe::CreationContext<'_>) -> Self {
-        // let data_root = Path::new("/home/adam/repos/data/poe"); // laptop
-        let data_root = Path::new("/mnt/nvme_4tb/programming/data/poe2"); // desktop
+        let data_root = Path::new("/home/adam/repos/data/poe"); // laptop
+        // let data_root = Path::new("/mnt/nvme_4tb/programming/data/poe2"); // desktop
         init(data_root);
 
         // Customize egui here with cc.egui_ctx.set_fonts and cc.egui_ctx.set_visuals.
@@ -54,7 +54,7 @@ impl eframe::App for MyEguiApp {
             })
         });
 
-        match self.page {
+        match &mut self.page {
             Page::ItemBuilder => {
                 item_builder::show_page(ctx, &mut self.base_item);
             }
@@ -63,6 +63,9 @@ impl eframe::App for MyEguiApp {
             }
             Page::StrategyBuilder { .. } => {
                 strategy_sim::show_page(&mut self.page, ctx, &mut self.base_item);
+            }
+            Page::UIDebug(state) => {
+                ui_debug::show_page(ctx, state);
             }
         }
     }

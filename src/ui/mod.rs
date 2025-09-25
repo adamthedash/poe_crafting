@@ -1,3 +1,4 @@
+pub mod components;
 pub mod pages;
 
 use std::{collections::HashSet, mem::replace, ops::RangeInclusive};
@@ -9,6 +10,7 @@ use crate::{
     item_state::{ItemState, Rarity, get_valid_mods_for_item},
     strategy::Strategy,
     types::Omen,
+    ui::pages::ui_debug,
 };
 
 /// Persisted state for the pages
@@ -25,6 +27,7 @@ pub enum Page {
         strategy: Strategy,
         simulation_state: Option<pages::strategy_sim::SimState>,
     },
+    UIDebug(ui_debug::PageState),
 }
 
 impl Page {
@@ -43,6 +46,7 @@ impl Page {
                 strategy: Strategy(vec![]),
                 simulation_state: None,
             },
+            UIDebug(ui_debug::PageState::default()),
         ]
     }
 
@@ -51,6 +55,7 @@ impl Page {
             Page::ItemBuilder => "Item Builder",
             Page::CraftProbability { .. } => "Craft Probabilities",
             Page::StrategyBuilder { .. } => "Strategy Builder",
+            Page::UIDebug(_) => "UI Debug",
         }
     }
 }
