@@ -23,9 +23,15 @@ where
 /// Helper trait to make CSV record loading easier
 pub trait RecordLoader: DeserializeOwned {
     /// Load the provided CSV into a structured iterator
-    fn load(path: &Path) -> impl Iterator<Item = Self> {
+    fn load_from_path(path: &Path) -> impl Iterator<Item = Self> {
         csv::Reader::from_path(path)
             .unwrap()
+            .into_deserialize::<Self>()
+            .map(|row| row.expect("Failed to deserialise row"))
+    }
+
+    fn load_from_bytes(bytes: &[u8]) -> impl Iterator<Item = Self> {
+        csv::Reader::from_reader(bytes)
             .into_deserialize::<Self>()
             .map(|row| row.expect("Failed to deserialise row"))
     }
@@ -143,22 +149,60 @@ pub struct Dats {
 impl Dats {
     pub fn load_tables(data_root: &Path) -> Self {
         Self {
-            mods: ModsRecord::load(&data_root.join("data/mods.csv")).collect(),
-            mod_type: ModTypeRecord::load(&data_root.join("data/modtype.csv")).collect(),
-            mod_family: ModFamilyRecord::load(&data_root.join("data/modfamily.csv")).collect(),
-            stats: StatRecord::load(&data_root.join("data/stats.csv")).collect(),
-            base_item_types: BaseItemTypesRecord::load(&data_root.join("data/baseitemtypes.csv"))
+            mods: ModsRecord::load_from_path(&data_root.join("data/mods.csv")).collect(),
+            mod_type: ModTypeRecord::load_from_path(&data_root.join("data/modtype.csv")).collect(),
+            mod_family: ModFamilyRecord::load_from_path(&data_root.join("data/modfamily.csv"))
                 .collect(),
-            item_classes: ItemClassesRecord::load(&data_root.join("data/itemclasses.csv"))
+            stats: StatRecord::load_from_path(&data_root.join("data/stats.csv")).collect(),
+            base_item_types: BaseItemTypesRecord::load_from_path(
+                &data_root.join("data/baseitemtypes.csv"),
+            )
+            .collect(),
+            item_classes: ItemClassesRecord::load_from_path(
+                &data_root.join("data/itemclasses.csv"),
+            )
+            .collect(),
+            tags: TagsRecord::load_from_path(&data_root.join("data/tags.csv")).collect(),
+            essences: EssencesRecord::load_from_path(&data_root.join("data/essences.csv"))
                 .collect(),
-            tags: TagsRecord::load(&data_root.join("data/tags.csv")).collect(),
-            essences: EssencesRecord::load(&data_root.join("data/essences.csv")).collect(),
-            essence_target_item_categories: EssenceTargetItemCategoriesRecord::load(
+            essence_target_item_categories: EssenceTargetItemCategoriesRecord::load_from_path(
                 &data_root.join("data/essencetargetitemcategories.csv"),
             )
             .collect(),
-            essence_mods: EssenceModsRecord::load(&data_root.join("data/essencemods.csv"))
+            essence_mods: EssenceModsRecord::load_from_path(
+                &data_root.join("data/essencemods.csv"),
+            )
+            .collect(),
+        }
+    }
+
+    pub fn load_tables_embedded() -> Self {
+        Self {
+            mods: ModsRecord::load_from_bytes(include_bytes!("../../data/tables/data/mods.csv"))
                 .collect(),
+            mod_type: ModTypeRecord::load_from_path(&data_root.join("data/modtype.csv")).collect(),
+            mod_family: ModFamilyRecord::load_from_path(&data_root.join("data/modfamily.csv"))
+                .collect(),
+            stats: StatRecord::load_from_path(&data_root.join("data/stats.csv")).collect(),
+            base_item_types: BaseItemTypesRecord::load_from_path(
+                &data_root.join("data/baseitemtypes.csv"),
+            )
+            .collect(),
+            item_classes: ItemClassesRecord::load_from_path(
+                &data_root.join("data/itemclasses.csv"),
+            )
+            .collect(),
+            tags: TagsRecord::load_from_path(&data_root.join("data/tags.csv")).collect(),
+            essences: EssencesRecord::load_from_path(&data_root.join("data/essences.csv"))
+                .collect(),
+            essence_target_item_categories: EssenceTargetItemCategoriesRecord::load_from_path(
+                &data_root.join("data/essencetargetitemcategories.csv"),
+            )
+            .collect(),
+            essence_mods: EssenceModsRecord::load_from_path(
+                &data_root.join("data/essencemods.csv"),
+            )
+            .collect(),
         }
     }
 }
