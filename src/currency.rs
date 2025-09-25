@@ -395,10 +395,15 @@ impl Currency for Exalt {
         for _ in 0..num_slams {
             let candidate_tiers = self.filter_slammable(item, &candidate_tiers);
 
-            let weights = candidate_tiers
+            let mut weights = candidate_tiers
                 .iter()
                 .map(|&tier_id| TIERS[tier_id].weight as f32)
                 .collect::<Vec<_>>();
+
+            // Edge case: When all weights are 0, randomly choose one
+            if weights.iter().all(|&w| w == 0.) {
+                weights = vec![1.; weights.len()];
+            }
 
             let choice = *random_choice()
                 .random_choice_f32(&candidate_tiers, &weights, 1)
