@@ -13,7 +13,7 @@ use crate::{
     hashvec::OpaqueIndex,
     item_state::{ItemState, get_valid_mods_for_item},
     types::{Omen, Tier},
-    ui::{Page, dropdown, omen_selection},
+    ui::{Page, components::currency_selection::currency_dropdown, omen_selection},
 };
 
 #[derive(Debug)]
@@ -146,13 +146,14 @@ pub fn show_page(page_state: &mut Page, ctx: &egui::Context, item: &ItemState) {
 
     egui::CentralPanel::default().show(ctx, |ui| {
         // Select Currency
-        let old_selected = dropdown(ui, selected_currency, &currencies, "currency_select", |c| {
-            c.name().to_string()
-        });
+        // TODO: Hold a ref instead of cloning as they're all static anyway
+        let mut selected = &*selected_currency;
+        let old_selected = currency_dropdown(ui, &mut selected, &currencies);
         if old_selected.is_some() {
             // Currency changed, clear omens
             selected_omens.clear();
         }
+        *selected_currency = selected.clone();
 
         // Select Omens
         omen_selection(ui, selected_currency, selected_omens, Some(item));

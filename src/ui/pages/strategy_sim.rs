@@ -17,7 +17,8 @@ use crate::{
     strategy::{Condition, ConditionGroup, ModifierCondition, Strategy},
     types::{Modifier, Omen, Tier},
     ui::{
-        Page, dropdown, multi_select_checkboxes, omen_selection, range_selector, rarity_dropdown,
+        Page, components::currency_selection::currency_dropdown, dropdown, multi_select_checkboxes,
+        omen_selection, range_selector, rarity_dropdown,
     },
 };
 
@@ -389,16 +390,12 @@ pub fn show_page(page_state: &mut Page, ctx: &egui::Context, item: &mut ItemStat
                         };
 
                         // Select Currency
-                        let old_selected = dropdown(
-                            ui,
-                            currency,
-                            &CURRENCIES,
-                            &format!("currency_select_{i}"),
-                            |c| c.name().to_string(),
-                        );
+                        let mut selected = &*currency;
+                        let old_selected = currency_dropdown(ui, &mut selected, &CURRENCIES);
                         if old_selected.is_some() {
                             // Currency changed, clear omens
                             selected_omens.clear();
+                            *currency = selected.clone();
                         }
 
                         // Select Omens

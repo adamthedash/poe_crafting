@@ -8,7 +8,7 @@ pub fn currency_dropdown<'a>(
     ui: &mut Ui,
     value: &mut &'a CurrencyType,
     currencies: &[&'a CurrencyType],
-) {
+) -> Option<&'a CurrencyType> {
     // Standard
     //  Exalt
     //      Base
@@ -27,6 +27,7 @@ pub fn currency_dropdown<'a>(
     //          Preserved
     //          Ancient
 
+    // Bunch of pre-processing of the currencies to group them up nicely
     use CurrencyType::*;
     let categories = currencies
         .iter()
@@ -49,6 +50,7 @@ pub fn currency_dropdown<'a>(
         };
         let base_types = group
             .map(|c| {
+                // Try strip the prefix, otherwise just use the name as-is
                 let base_name = prefixes
                     .iter()
                     .flat_map(|pre| c.name().strip_prefix(pre))
@@ -83,33 +85,42 @@ pub fn currency_dropdown<'a>(
 
     // Display currently selected currency at top level
     let name = value.name().to_string();
-    currency_submenu(ui, value, &name, &currencies);
+    currency_submenu(ui, value, &name, &currencies)
 }
 
 #[derive(Clone)]
 enum MenuEntry<'a> {
+    /// Displays the entry as-is
     One(&'a CurrencyType),
+    /// Displays a submenu with the provided name and contents
     Many(Vec<(&'a str, MenuEntry<'a>)>),
 }
 
+/// Recursive submenus
 fn currency_submenu<'a>(
     ui: &mut Ui,
     value: &mut &'a CurrencyType,
     name: &str,
     contents: &[(&str, MenuEntry<'a>)],
-) {
+) -> Option<&'a CurrencyType> {
     ui.menu_button(name, |ui| {
-        for (entry_name, entry_contents) in contents {
-            match entry_contents {
+        contents
+            .iter()
+            .flat_map(|(entry_name, entry_contents)| match entry_contents {
                 MenuEntry::One(currency_type) => {
                     if ui.button(currency_type.name()).clicked() {
-                        *value = *currency_type
+                        let old_value = *value;
+                        *value = *currency_type;
+
+                        (old_value != *value).then_some(old_value)
+                    } else {
+                        None
                     }
                 }
-                MenuEntry::Many(items) => {
-                    currency_submenu(ui, value, entry_name, items);
-                }
-            };
-        }
-    });
+                MenuEntry::Many(items) => currency_submenu(ui, value, entry_name, items),
+            })
+            .next()
+    })
+    .inner
+    .flatten()
 }
