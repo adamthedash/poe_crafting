@@ -55,52 +55,55 @@ fn show_strategy_step(
     condition: &mut Condition,
     candidate_mods: &[(OpaqueIndex<Modifier>, Vec<OpaqueIndex<Tier>>)],
 ) -> Option<OrderRequest> {
-    Frame::default()
-        .fill(Color32::DARK_RED)
-        .show(ui, |ui| {
-            let order_action = ui
-                .horizontal(|ui| {
-                    // Button to remove this step
-                    [
-                        ui.button("X").clicked().then_some(OrderRequest::Remove),
-                        ui.button("^").clicked().then_some(OrderRequest::MoveUp),
-                        ui.button("v").clicked().then_some(OrderRequest::MoveDown),
-                        ui.button("Copy").clicked().then_some(OrderRequest::Copy),
-                    ]
-                    .into_iter()
-                    .flatten()
-                    .next()
-                })
-                .inner;
+    ui.vertical(|ui| {
+        Frame::default()
+            .fill(Color32::DARK_RED)
+            .show(ui, |ui| {
+                let order_action = ui
+                    .horizontal(|ui| {
+                        // Button to remove this step
+                        [
+                            ui.button("X").clicked().then_some(OrderRequest::Remove),
+                            ui.button("^").clicked().then_some(OrderRequest::MoveUp),
+                            ui.button("v").clicked().then_some(OrderRequest::MoveDown),
+                            ui.button("Copy").clicked().then_some(OrderRequest::Copy),
+                        ]
+                        .into_iter()
+                        .flatten()
+                        .next()
+                    })
+                    .inner;
 
-            rarity_dropdown(ui, &mut condition.rarity, &format!("rarity_{key}"));
+                rarity_dropdown(ui, &mut condition.rarity, &format!("rarity_{key}"));
 
-            // Condition groups
-            let to_remove = condition
-                .groups
-                .iter_mut()
-                .enumerate()
-                .flat_map(|(i, group)| {
-                    show_strategy_group(ui, &format!("{key}_{i}"), group, candidate_mods)
-                        .then_some(i)
-                })
-                .next();
+                // Condition groups
+                let to_remove = condition
+                    .groups
+                    .iter_mut()
+                    .enumerate()
+                    .flat_map(|(i, group)| {
+                        show_strategy_group(ui, &format!("{key}_{i}"), group, candidate_mods)
+                            .then_some(i)
+                    })
+                    .next();
 
-            if let Some(index) = to_remove {
-                condition.groups.remove(index);
-            }
+                if let Some(index) = to_remove {
+                    condition.groups.remove(index);
+                }
 
-            // Button to add a new group
-            if ui.button("Add new group").clicked() {
-                condition.groups.push(ConditionGroup::Count {
-                    count: 0..=1,
-                    mods: vec![],
-                });
-            }
+                // Button to add a new group
+                if ui.button("Add new group").clicked() {
+                    condition.groups.push(ConditionGroup::Count {
+                        count: 0..=1,
+                        mods: vec![],
+                    });
+                }
 
-            order_action
-        })
-        .inner
+                order_action
+            })
+            .inner
+    })
+    .inner
 }
 
 fn show_strategy_group(
@@ -342,70 +345,77 @@ pub fn show_page(page_state: &mut Page, ctx: &egui::Context, item: &mut ItemStat
 
     CentralPanel::default().show(ctx, |ui| {
         ScrollArea::vertical().show(ui, |ui| {
-            if ui.button("Save").clicked() {
-                // Serialise strategy to JSON
-                let _ = SavedStrategy {
-                    base_item: item.clone(),
-                    strategy: strategy.clone(),
+            ui.horizontal(|ui| {
+                if ui.button("Save").clicked() {
+                    // Serialise strategy to JSON
+                    let _ = SavedStrategy {
+                        base_item: item.clone(),
+                        strategy: strategy.clone(),
+                    }
+                    .save(Path::new("strat.json"));
                 }
-                .save(Path::new("strat.json"));
-            }
-            if ui.button("Load").clicked() {
-                // Load strategy, TODO: verify that it's valid?
-                let saved_strategy = SavedStrategy::load(Path::new("strat.json"));
-                if let Ok(saved_strategy) = saved_strategy {
-                    *strategy = saved_strategy.strategy;
-                    *item = saved_strategy.base_item;
-                    (candidate_tiers, candidate_mods) = get_tiers_mods(item);
+                if ui.button("Load").clicked() {
+                    // Load strategy, TODO: verify that it's valid?
+                    let saved_strategy = SavedStrategy::load(Path::new("strat.json"));
+                    if let Ok(saved_strategy) = saved_strategy {
+                        *strategy = saved_strategy.strategy;
+                        *item = saved_strategy.base_item;
+                        (candidate_tiers, candidate_mods) = get_tiers_mods(item);
+                    }
                 }
-            }
+            });
 
             let order_action = strategy
                 .0
                 .iter_mut()
                 .enumerate()
                 .flat_map(|(i, (condition, action))| {
-                    // Condition
-                    let order_action =
-                        show_strategy_step(ui, &format!("{i}"), condition, &candidate_mods).map(
-                            |request| match request {
-                                OrderRequest::Remove => OrderAction::Remove(i),
-                                OrderRequest::MoveUp => OrderAction::MoveUp(i),
-                                OrderRequest::MoveDown => OrderAction::MoveDown(i),
-                                OrderRequest::Copy => OrderAction::Copy(i),
-                            },
-                        );
+                    ui.horizontal(|ui| {
+                        // Condition
+                        let order_action =
+                            show_strategy_step(ui, &format!("{i}"), condition, &candidate_mods)
+                                .map(|request| match request {
+                                    OrderRequest::Remove => OrderAction::Remove(i),
+                                    OrderRequest::MoveUp => OrderAction::MoveUp(i),
+                                    OrderRequest::MoveDown => OrderAction::MoveDown(i),
+                                    OrderRequest::Copy => OrderAction::Copy(i),
+                                });
 
-                    // Action
-                    let mut do_action = action.is_some();
-                    ui.checkbox(&mut do_action, "Craft");
-                    if do_action {
-                        if action.is_none() {
-                            // Default selection
-                            *action = Some((HashSet::new(), CurrencyType::Transmute));
-                        }
-                        // Show currency dropdown
-                        let Some((selected_omens, currency)) = action else {
-                            unreachable!()
-                        };
+                        // Action
+                        ui.vertical(|ui| {
+                            let mut do_action = action.is_some();
+                            ui.checkbox(&mut do_action, "Craft");
+                            if do_action {
+                                if action.is_none() {
+                                    // Default selection
+                                    *action = Some((HashSet::new(), CurrencyType::Transmute));
+                                }
+                                // Show currency dropdown
+                                let Some((selected_omens, currency)) = action else {
+                                    unreachable!()
+                                };
 
-                        // Select Currency
-                        let mut selected = &*currency;
-                        let old_selected = currency_dropdown(ui, &mut selected, &CURRENCIES);
-                        if old_selected.is_some() {
-                            // Currency changed, clear omens
-                            selected_omens.clear();
-                            *currency = selected.clone();
-                        }
+                                // Select Currency
+                                let mut selected = &*currency;
+                                let old_selected =
+                                    currency_dropdown(ui, &mut selected, &CURRENCIES);
+                                if old_selected.is_some() {
+                                    // Currency changed, clear omens
+                                    selected_omens.clear();
+                                    *currency = selected.clone();
+                                }
 
-                        // Select Omens
-                        omen_selection(ui, currency, selected_omens, None);
-                    } else {
-                        // No action - end state
-                        *action = None;
-                    }
+                                // Select Omens
+                                omen_selection(ui, currency, selected_omens, None);
+                            } else {
+                                // No action - end state
+                                *action = None;
+                            }
+                        });
 
-                    order_action
+                        order_action
+                    })
+                    .inner
                 })
                 .next();
 
