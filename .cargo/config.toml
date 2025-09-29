@@ -1,0 +1,6 @@
+# https://github.com/rust-lang/rust-analyzer/pull/8774
+[build]
+target = "wasm32-unknown-unknown"
+
+[target.wasm32-unknown-unknown]
+rustflags = ['--cfg', 'getrandom_backend="wasm_js"']

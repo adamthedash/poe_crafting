@@ -5,8 +5,8 @@ use poe_crafting::{
     currency::Currency,
     init,
     item_state::{ItemState, Rarity, get_valid_mods_for_item},
+    util,
 };
-use random_choice::random_choice;
 
 fn main() {
     // let data_root = Path::new("/home/adam/repos/data/poe"); // laptop
@@ -14,10 +14,10 @@ fn main() {
     init(data_root);
 
     let bases = ITEM_TIERS.keys().collect::<Vec<_>>();
-    let weights = vec![1.; bases.len()];
+    let weights = vec![1; bases.len()];
 
     for _ in 0..100 {
-        let base_type = random_choice().random_choice_f32(&bases, &weights, 1)[0];
+        let base_type = util::rand::choice(&bases, &weights);
         let mut item = ItemState {
             base_type: (*base_type).clone(),
             item_level: 75,
@@ -33,8 +33,8 @@ fn main() {
                 .filter(|c| c.can_be_used(&item, &candidate_tiers, &HashSet::new()))
                 .copied()
                 .collect::<Vec<_>>();
-            let weights = vec![1.; currencies.len()];
-            let currency = random_choice().random_choice_f32(&currencies, &weights, 1)[0];
+            let weights = vec![1; currencies.len()];
+            let currency = util::rand::choice(&currencies, &weights);
 
             // Select random omens
             let omens = currency
@@ -49,13 +49,9 @@ fn main() {
                     )
                 })
                 .collect::<Vec<_>>();
-            let weights = vec![1.; omens.len()];
-            let omens = HashSet::from_iter(
-                random_choice()
-                    .random_choice_f32(&omens, &weights, 1)
-                    .into_iter()
-                    .copied(),
-            );
+            let weights = vec![1; omens.len()];
+            let omen = util::rand::choice(&omens, &weights);
+            let omens = HashSet::from_iter(std::iter::once(*omen));
 
             // println!("{:?} {:?}", omens, currency);
             let before = item.clone();

@@ -1,7 +1,5 @@
 use std::collections::{HashMap, HashSet};
 
-use random_choice::random_choice;
-
 use crate::{
     MODS, TIERS,
     crafting::{
@@ -10,6 +8,7 @@ use crate::{
     hashvec::OpaqueIndex,
     item_state::{ItemState, Rarity},
     types::{Affix, BaseItemId, Omen, Tier},
+    util,
 };
 
 pub trait Currency {
@@ -150,10 +149,10 @@ impl Currency for Augmentation {
         // Roll a mod
         let weights = candidate_tiers
             .iter()
-            .map(|&tier_id| TIERS[tier_id].weight as f32)
+            .map(|&tier_id| TIERS[tier_id].weight)
             .collect::<Vec<_>>();
 
-        let choice = *random_choice().random_choice_f32(&candidate_tiers, &weights, 1)[0];
+        let choice = *util::rand::choice(&candidate_tiers, &weights);
 
         item.mods.push(choice);
     }
@@ -397,27 +396,16 @@ impl Currency for Exalt {
 
             let mut weights = candidate_tiers
                 .iter()
-                .map(|&tier_id| TIERS[tier_id].weight as f32)
+                .map(|&tier_id| TIERS[tier_id].weight)
                 .collect::<Vec<_>>();
 
             // Edge case: When all weights are 0, randomly choose one
-            if weights.iter().all(|&w| w == 0.) {
-                weights = vec![1.; weights.len()];
+            if weights.iter().all(|&w| w == 0) {
+                weights = vec![1; weights.len()];
             }
 
-            let choice = *random_choice()
-                .random_choice_f32(&candidate_tiers, &weights, 1)
-                .first()
-                .unwrap_or_else(|| {
-                    item.print_item();
-                    panic!(
-                        "No canidates to slam! omens: {:?}, {:?}",
-                        omens,
-                        std::any::type_name::<Self>()
-                    );
-                });
-
-            item.mods.push(*choice);
+            let choice = *util::rand::choice(&candidate_tiers, &weights);
+            item.mods.push(choice);
         }
     }
 }
@@ -564,11 +552,8 @@ impl Currency for Annulment {
         // TODO: Check validity of 2nd remove
         let num_removes = if omens.contains(&Omen::Greater) { 2 } else { 1 };
         for _ in 0..num_removes {
-            let weights = vec![1.; candidate_removes.len()];
-            let to_remove = *(*random_choice()
-                .random_choice_f32(&candidate_removes, &weights, 1)
-                .first()
-                .expect("No candidates to remove!"));
+            let weights = vec![1; candidate_removes.len()];
+            let to_remove = *util::rand::choice(&candidate_removes, &weights);
 
             item.mods.retain(|tier_id| *tier_id != to_remove);
             candidate_removes.retain(|tier_id| *tier_id != to_remove);
@@ -883,11 +868,8 @@ impl Currency for PerfectEssence {
         let candidate_removes = candidate_removes.collect::<Vec<_>>();
 
         // Remove a mod
-        let weights = vec![1.; candidate_removes.len()];
-        let to_remove = **random_choice()
-            .random_choice_f32(&candidate_removes, &weights, 1)
-            .first()
-            .expect("No candidates to remove!");
+        let weights = vec![1; candidate_removes.len()];
+        let to_remove = *util::rand::choice(&candidate_removes, &weights);
 
         item.mods.retain(|tier_id| *tier_id != to_remove);
 
@@ -965,8 +947,8 @@ impl Currency for Desecrate {
 
         let candidate_tiers = candidate_tiers.collect::<Vec<_>>();
 
-        let weights = vec![1.; candidate_tiers.len()];
-        let choice = *random_choice().random_choice_f32(&candidate_tiers, &weights, 1)[0];
+        let weights = vec![1; candidate_tiers.len()];
+        let choice = *util::rand::choice(&candidate_tiers, &weights);
 
         item.mods.push(choice);
     }

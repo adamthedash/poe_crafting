@@ -30,10 +30,12 @@ pub enum SimStatus {
 pub struct SimState {
     _base_item: ItemState,
     status: Arc<Mutex<SimStatus>>,
+    #[cfg(not(target_arch = "wasm32"))]
     _handle: JoinHandle<()>,
 }
 
 /// Start a crafting simulation in a new thread
+#[cfg(not(target_arch = "wasm32"))]
 fn run_sim(
     base_item: ItemState,
     currency: CurrencyType,
@@ -76,6 +78,54 @@ fn run_sim(
             }
         }),
     }
+}
+
+/// Start a crafting simulation in a new thread
+#[cfg(target_arch = "wasm32")]
+fn run_sim(
+    base_item: ItemState,
+    currency: CurrencyType,
+    omens: HashSet<Omen>,
+    num_iters: u64,
+) -> SimState {
+    let candidate_tiers = get_valid_mods_for_item(&base_item);
+
+    let status = Arc::new(Mutex::new(SimStatus::Running { iterations_done: 0 }));
+
+    let state = SimState {
+        _base_item: base_item.clone(),
+        status: status.clone(),
+    };
+
+    wasm_bindgen_futures::spawn_local(async move {
+        let mut results = HashMap::<_, usize>::new();
+        let before_mods = base_item.mods.iter().copied().collect::<HashSet<_>>();
+        for _ in 0..num_iters {
+            // Apply the currency
+            let mut item = base_item.clone();
+            currency.craft(&mut item, &candidate_tiers, &omens);
+
+            // Figure out which mod was added
+            let after_mods = item.mods.iter().copied().collect::<HashSet<_>>();
+            let added = after_mods.difference(&before_mods);
+            for tier_id in added {
+                *results.entry(*tier_id).or_default() += 1;
+            }
+
+            // Update status
+            let mut status = status.lock().unwrap();
+            let SimStatus::Running { iterations_done } = &mut *status else {
+                unreachable!();
+            };
+            *iterations_done += 1;
+        }
+
+        // Give the results back
+        let mut status = status.lock().unwrap();
+        *status = SimStatus::Done { results };
+    });
+
+    state
 }
 
 /// A grid showing the % chance for each mod to roll

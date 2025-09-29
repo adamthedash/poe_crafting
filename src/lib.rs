@@ -8,5 +8,6 @@ pub mod parsers;
 pub mod strategy;
 pub mod types;
 pub mod ui;
+pub mod util;
 
 pub use internal::{CURRENCIES, FORMATTERS, ITEM_TIERS, MODS, TIERS, init};
