@@ -1,7 +1,8 @@
+#[cfg(not(target_arch = "wasm32"))]
+use std::thread::{self, JoinHandle};
 use std::{
     collections::{HashMap, HashSet},
     sync::{Arc, Mutex},
-    thread::{self, JoinHandle},
 };
 
 use egui::{self, DragValue, Grid, ScrollArea, Ui};
@@ -34,6 +35,31 @@ pub struct SimState {
     _handle: JoinHandle<()>,
 }
 
+fn sim_batch(
+    base_item: &ItemState,
+    currency: &CurrencyType,
+    omens: &HashSet<Omen>,
+    candidate_tiers: &[OpaqueIndex<Tier>],
+    num_iters: usize,
+) -> HashMap<OpaqueIndex<Tier>, usize> {
+    let mut results = HashMap::new();
+    let before_mods = base_item.mods.iter().copied().collect::<HashSet<_>>();
+    for _ in 0..num_iters {
+        // Apply the currency
+        let mut item = base_item.clone();
+        currency.craft(&mut item, candidate_tiers, omens);
+
+        // Figure out which mod was added
+        let after_mods = item.mods.iter().copied().collect::<HashSet<_>>();
+        let added = after_mods.difference(&before_mods);
+        for tier_id in added {
+            *results.entry(*tier_id).or_default() += 1;
+        }
+    }
+
+    results
+}
+
 /// Start a crafting simulation in a new thread
 #[cfg(not(target_arch = "wasm32"))]
 fn run_sim(
@@ -50,7 +76,7 @@ fn run_sim(
         status: status.clone(),
         _handle: thread::spawn({
             move || {
-                let mut results = HashMap::<_, usize>::new();
+                let mut results = HashMap::new();
                 let before_mods = base_item.mods.iter().copied().collect::<HashSet<_>>();
                 for _ in 0..num_iters {
                     // Apply the currency
@@ -83,6 +109,7 @@ fn run_sim(
 /// Start a crafting simulation in a new thread
 #[cfg(target_arch = "wasm32")]
 fn run_sim(
+    ctx: &egui::Context,
     base_item: ItemState,
     currency: CurrencyType,
     omens: HashSet<Omen>,
@@ -97,27 +124,44 @@ fn run_sim(
         status: status.clone(),
     };
 
-    wasm_bindgen_futures::spawn_local(async move {
-        let mut results = HashMap::<_, usize>::new();
-        let before_mods = base_item.mods.iter().copied().collect::<HashSet<_>>();
-        for _ in 0..num_iters {
-            // Apply the currency
-            let mut item = base_item.clone();
-            currency.craft(&mut item, &candidate_tiers, &omens);
+    let ctx = ctx.clone();
 
-            // Figure out which mod was added
-            let after_mods = item.mods.iter().copied().collect::<HashSet<_>>();
-            let added = after_mods.difference(&before_mods);
-            for tier_id in added {
-                *results.entry(*tier_id).or_default() += 1;
+    wasm_bindgen_futures::spawn_local(async move {
+        let batch_size = 1000;
+        let batch_sizes = std::iter::repeat_n(batch_size, (num_iters / batch_size) as usize)
+            .chain(std::iter::once(num_iters % batch_size));
+
+        let mut results = HashMap::new();
+        for batch_size in batch_sizes {
+            // Run batch of simulations
+            async {
+                sim_batch(
+                    &base_item,
+                    &currency,
+                    &omens,
+                    &candidate_tiers,
+                    batch_size as usize,
+                )
             }
+            .await
+            .into_iter()
+            // Coalesce results
+            .for_each(|(tier_id, count)| {
+                *results.entry(tier_id).or_default() += count;
+            });
 
             // Update status
-            let mut status = status.lock().unwrap();
-            let SimStatus::Running { iterations_done } = &mut *status else {
-                unreachable!();
-            };
-            *iterations_done += 1;
+            {
+                let mut status = status.lock().unwrap();
+                let SimStatus::Running { iterations_done } = &mut *status else {
+                    unreachable!();
+                };
+                *iterations_done += batch_size as usize;
+            }
+
+            // Redraw UI
+            ctx.request_repaint();
+            gloo_timers::future::TimeoutFuture::new(0).await;
         }
 
         // Give the results back
@@ -219,6 +263,8 @@ pub fn show_page(page_state: &mut Page, ctx: &egui::Context, item: &ItemState) {
         // Simulation
         if ui.button("Go!").clicked() {
             let state = run_sim(
+                #[cfg(target_arch = "wasm32")]
+                ctx,
                 item.clone(),
                 selected_currency.clone(),
                 selected_omens.clone(),
