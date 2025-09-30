@@ -874,7 +874,6 @@ impl Currency for PerfectEssence {
         item.mods.retain(|tier_id| *tier_id != to_remove);
 
         // Add on a new mod
-        // TODO: Check if this plays well with weights for essence mods
         Exalt.craft(item, new_tier_ids, &HashSet::new());
     }
 }
@@ -954,6 +953,83 @@ impl Currency for Desecrate {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct Unveil {
+    /// List of mods that the user would pick if they saw them
+    priority_list: Vec<OpaqueIndex<Tier>>,
+}
+
+impl PartialEq for Unveil {
+    fn eq(&self, _other: &Self) -> bool {
+        true
+    }
+}
+
+impl Currency for Unveil {
+    fn name(&self) -> &str {
+        "Unveil Desecrated Modifier"
+    }
+
+    fn can_be_used(
+        &self,
+        item: &ItemState,
+        _candidate_tiers: &[OpaqueIndex<Tier>],
+        _omens: &HashSet<Omen>,
+    ) -> bool {
+        let veiled_tiers = [TIERS.opaque("VeiledPrefix"), TIERS.opaque("VeiledSuffix")];
+        item.mods
+            .iter()
+            .any(|tier_id| veiled_tiers.contains(tier_id))
+    }
+
+    fn craft(
+        &self,
+        item: &mut ItemState,
+        candidate_tiers: &[OpaqueIndex<Tier>],
+        _omens: &HashSet<Omen>,
+    ) {
+        let mut candidate_tiers: Box<dyn Iterator<Item = OpaqueIndex<Tier>>> =
+            Box::new(candidate_tiers.iter().copied());
+
+        let tier_id_prefix = TIERS.opaque("VeiledPrefix");
+        let tier_id_suffix = TIERS.opaque("VeiledSuffix");
+        if item.mods.contains(&tier_id_prefix) {
+            candidate_tiers = Box::new(filter_affix(candidate_tiers, Affix::Prefix));
+        } else if item.mods.contains(&tier_id_suffix) {
+            candidate_tiers = Box::new(filter_affix(candidate_tiers, Affix::Suffix));
+        }
+
+        let candidate_tiers = candidate_tiers.collect::<Vec<_>>();
+
+        // Choose 3 random mods - TODO: include desecrated mods
+        let mut weights = candidate_tiers
+            .iter()
+            .map(|&tier_id| TIERS[tier_id].weight)
+            .collect::<Vec<_>>();
+        let mut choices = vec![];
+        for _ in 0..3 {
+            let index =
+                *util::rand::choice(&(0..candidate_tiers.len()).collect::<Vec<_>>(), &weights);
+
+            // Zero out weight so we don't pick it twice
+            choices.push(candidate_tiers[index]);
+            weights[index] = 0;
+        }
+
+        // Take the highest by priority
+        let choice = choices
+            .into_iter()
+            .min_by_key(|tier_id| self.priority_list.iter().position(|p| p == tier_id))
+            .expect("Tier not in priority list");
+
+        // Remove veiled mod
+        item.mods
+            .retain(|tier_id| ![tier_id_prefix, tier_id_suffix].contains(tier_id));
+
+        item.mods.push(choice);
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum CurrencyType {
     Transmute,
@@ -976,6 +1052,7 @@ pub enum CurrencyType {
     Essence(Essence),
     PerfectEssence(PerfectEssence),
     Desecrate,
+    Unveil(Unveil),
 }
 
 impl Currency for CurrencyType {
@@ -1001,6 +1078,7 @@ impl Currency for CurrencyType {
             Self::Essence(essence) => essence.name(),
             Self::PerfectEssence(essence) => essence.name(),
             Self::Desecrate => Desecrate.name(),
+            Self::Unveil(unveil) => unveil.name(),
         }
     }
 
@@ -1035,6 +1113,7 @@ impl Currency for CurrencyType {
             Self::Essence(essence) => essence.can_be_used(item, candidate_tiers, omens),
             Self::PerfectEssence(essence) => essence.can_be_used(item, candidate_tiers, omens),
             Self::Desecrate => Desecrate.can_be_used(item, candidate_tiers, omens),
+            Self::Unveil(unveil) => unveil.can_be_used(item, candidate_tiers, omens),
         }
     }
 
@@ -1065,6 +1144,7 @@ impl Currency for CurrencyType {
             Self::Essence(essence) => essence.craft(item, candidate_tiers, omens),
             Self::PerfectEssence(essence) => essence.craft(item, candidate_tiers, omens),
             Self::Desecrate => Desecrate.craft(item, candidate_tiers, omens),
+            Self::Unveil(unveil) => unveil.craft(item, candidate_tiers, omens),
         }
     }
 }
