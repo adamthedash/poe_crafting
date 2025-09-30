@@ -1,8 +1,9 @@
+#[cfg(not(target_arch = "wasm32"))]
+use std::thread::{self, JoinHandle};
 use std::{
     collections::HashSet,
     path::Path,
     sync::{Arc, Mutex},
-    thread::{self, JoinHandle},
 };
 
 use egui::{self, CentralPanel, Color32, Frame, Grid, ScrollArea, Ui};
@@ -45,8 +46,9 @@ pub enum SimStatus {
 pub struct SimState {
     base_item: ItemState,
     strategy: Strategy,
-    handle: JoinHandle<()>,
     status: Arc<Mutex<SimStatus>>,
+    #[cfg(not(target_arch = "wasm32"))]
+    handle: JoinHandle<()>,
 }
 
 fn show_strategy_step(
@@ -452,6 +454,8 @@ pub fn show_page(page_state: &mut Page, ctx: &egui::Context, item: &mut ItemStat
             // Strategy simulation
             if ui.button("Go!").clicked() {
                 *simulation_state = Some(run_sim(
+                    #[cfg(target_arch = "wasm32")]
+                    ctx,
                     item.clone(),
                     strategy.clone(),
                     100,
@@ -501,6 +505,54 @@ pub fn show_page(page_state: &mut Page, ctx: &egui::Context, item: &mut ItemStat
     });
 }
 
+fn sim_batch(
+    strategy: &Strategy,
+    base_item: &ItemState,
+    candidate_tiers: &[OpaqueIndex<Tier>],
+    num_iters: usize,
+) -> SimStatus {
+    let mut state_transitions = vec![vec![0_usize; strategy.0.len()]; strategy.0.len()];
+    for _ in 0..num_iters {
+        let mut item = base_item.clone();
+
+        let mut finished_state = false;
+        let mut prev_state = None;
+        while let Some(index) = strategy.get(&item) {
+            // Keep track of state transitions
+            if let Some(prev) = prev_state {
+                let row: &mut Vec<_> = &mut state_transitions[prev];
+                row[index] += 1;
+            }
+            prev_state = Some(index);
+
+            let Some((omens, currency)) = &strategy.0[index].1 else {
+                // End step, break out
+                finished_state = true;
+                break;
+            };
+
+            if !currency.can_be_used(&item, candidate_tiers, omens) {
+                // Condition matched but the currency can't be used on it
+                return SimStatus::InvalidCraft {
+                    item,
+                    currency: currency.clone(),
+                    omens: omens.clone(),
+                };
+            }
+
+            currency.craft(&mut item, candidate_tiers, omens);
+        }
+
+        if !finished_state {
+            // Process exited because there was no matching condition
+            return SimStatus::NoMatchingState { item };
+        }
+    }
+
+    SimStatus::Done { state_transitions }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 fn run_sim(
     base_item: ItemState,
     strategy: Strategy,
@@ -518,47 +570,97 @@ fn run_sim(
         strategy: strategy.clone(),
         status: status.clone(),
         handle: thread::spawn(move || {
+            let batch_size = 1000;
+            let batch_sizes = std::iter::repeat_n(batch_size, num_iters / batch_size)
+                .chain(std::iter::once(num_iters % batch_size));
+
             let mut state_transitions = vec![vec![0_usize; strategy.0.len()]; strategy.0.len()];
-            for _ in 0..num_iters {
-                let mut item = base_item.clone();
-
-                let mut finished_state = false;
-                let mut prev_state = None;
-                while let Some(index) = strategy.get(&item) {
-                    // Keep track of state transitions
-                    if let Some(prev) = prev_state {
-                        let row: &mut Vec<_> = &mut state_transitions[prev];
-                        row[index] += 1;
+            for batch_size in batch_sizes {
+                let batch_results = sim_batch(&strategy, &base_item, &candidate_tiers, batch_size);
+                match batch_results {
+                    // Happy path
+                    SimStatus::Done {
+                        state_transitions: batch_state_transitions,
+                    } => {
+                        //Coalesce results
+                        for i in 0..state_transitions.len() {
+                            for j in 0..state_transitions[0].len() {
+                                state_transitions[i][j] += batch_state_transitions[i][j];
+                            }
+                        }
                     }
-                    prev_state = Some(index);
-
-                    let Some((omens, currency)) = &strategy.0[index].1 else {
-                        // End step, break out
-                        finished_state = true;
-                        break;
-                    };
-
-                    if !currency.can_be_used(&item, &candidate_tiers, omens) {
-                        // Condition matched but the currency can't be used on it
-                        *status.lock().unwrap() = SimStatus::InvalidCraft {
-                            item,
-                            currency: currency.clone(),
-                            omens: omens.clone(),
-                        };
+                    SimStatus::Running { .. } => unreachable!(),
+                    // Error path
+                    err => {
+                        *status.lock().unwrap() = err;
                         return;
                     }
-
-                    currency.craft(&mut item, &candidate_tiers, omens);
-                }
-
-                if !finished_state {
-                    // Process exited because there was no matching condition
-                    *status.lock().unwrap() = SimStatus::NoMatchingState { item };
-                    return;
                 }
             }
 
             *status.lock().unwrap() = SimStatus::Done { state_transitions };
         }),
     }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn run_sim(
+    ctx: &egui::Context,
+    base_item: ItemState,
+    strategy: Strategy,
+    num_iters: usize,
+    candidate_tiers: &[OpaqueIndex<Tier>],
+) -> SimState {
+    let candidate_tiers = candidate_tiers.to_vec();
+    let status = Arc::new(Mutex::new(SimStatus::Running {
+        current_iters: 0,
+        total_iters: num_iters,
+    }));
+
+    let state = SimState {
+        base_item: base_item.clone(),
+        strategy: strategy.clone(),
+        status: status.clone(),
+    };
+
+    let ctx = ctx.clone();
+    wasm_bindgen_futures::spawn_local(async move {
+        let batch_size = 1000;
+        let batch_sizes = std::iter::repeat_n(batch_size, num_iters / batch_size)
+            .chain(std::iter::once(num_iters % batch_size));
+
+        let mut state_transitions = vec![vec![0_usize; strategy.0.len()]; strategy.0.len()];
+        for batch_size in batch_sizes {
+            let batch_results =
+                async { sim_batch(&strategy, &base_item, &candidate_tiers, batch_size) }.await;
+
+            match batch_results {
+                // Happy path
+                SimStatus::Done {
+                    state_transitions: batch_state_transitions,
+                } => {
+                    //Coalesce results
+                    for i in 0..state_transitions.len() {
+                        for j in 0..state_transitions[0].len() {
+                            state_transitions[i][j] += batch_state_transitions[i][j];
+                        }
+                    }
+                }
+                SimStatus::Running { .. } => unreachable!(),
+                // Error path
+                err => {
+                    *status.lock().unwrap() = err;
+                    return;
+                }
+            }
+
+            // Redraw UI
+            ctx.request_repaint();
+            gloo_timers::future::TimeoutFuture::new(0).await;
+        }
+
+        *status.lock().unwrap() = SimStatus::Done { state_transitions };
+    });
+
+    state
 }
